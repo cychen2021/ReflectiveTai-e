@@ -25,6 +25,10 @@ application {
     mainClass.set("pascal.taie.Main")
 }
 
+tasks.withType<JavaExec>() {
+    enableAssertions = true
+}
+
 task("fatJar", type = Jar::class) {
     group = "build"
     description = "Creates a single jar file including Tai-e and all dependencies"

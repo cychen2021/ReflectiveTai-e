@@ -5,7 +5,7 @@ import pascal.taie.language.type.Type;
 public class ExtendedType implements Type {
     private final Type type;
 
-    public Type getSome() {
+    public Type getType() {
         return isUnknown() ? null : type;
     }
 

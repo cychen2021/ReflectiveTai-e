@@ -9,7 +9,7 @@ import static pascal.taie.language.classes.ClassNames.FIELD;
 
 import java.util.Optional;
 
-public class FieldMetaLiteral implements ReferenceLiteral {
+public class FieldLiteral implements ReferenceLiteral {
     private Boolean isStatic;
 
     private final ExtendedJClass baseClass;
@@ -43,7 +43,7 @@ public class FieldMetaLiteral implements ReferenceLiteral {
         return isUnknown() && baseClass.isUnknown();
     }
 
-    private FieldMetaLiteral(FieldRef methodRef) {
+    private FieldLiteral(FieldRef methodRef) {
         this.fieldRef = methodRef;
         this.fieldName = null;
         this.fieldType = null;
@@ -51,8 +51,8 @@ public class FieldMetaLiteral implements ReferenceLiteral {
         this.isStatic = null;
     }
 
-    private FieldMetaLiteral(ExtendedJClass baseClass, Optional<String> name,
-                             ExtendedType fieldType, boolean isStatic) {
+    private FieldLiteral(ExtendedJClass baseClass, Optional<String> name,
+                         ExtendedType fieldType, boolean isStatic) {
         this.fieldRef = null;
         this.fieldName = name;
         this.fieldType = fieldType;
@@ -82,13 +82,13 @@ public class FieldMetaLiteral implements ReferenceLiteral {
         return World.get().getTypeSystem().getClassType(FIELD);
     }
 
-    public static FieldMetaLiteral from(ExtendedJClass baseClass, Optional<String> name,
-                                        ExtendedType fieldType, boolean isStatic) {
+    public static FieldLiteral from(ExtendedJClass baseClass, Optional<String> name,
+                                    ExtendedType fieldType, boolean isStatic) {
         if (baseClass.isUnknown() || name.isEmpty() || fieldType.isUnknown()) {
-            return new FieldMetaLiteral(baseClass, name, fieldType, isStatic);
+            return new FieldLiteral(baseClass, name, fieldType, isStatic);
         }
         FieldRef fieldRef =
-                FieldRef.get(baseClass.getSome(), name.get(), fieldType.getSome(), isStatic);
-        return new FieldMetaLiteral(fieldRef);
+                FieldRef.get(baseClass.getJClass(), name.get(), fieldType.getType(), isStatic);
+        return new FieldLiteral(fieldRef);
     }
 }

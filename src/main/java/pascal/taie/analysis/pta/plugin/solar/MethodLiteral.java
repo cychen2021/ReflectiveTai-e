@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class MethodMetaLiteral implements ReferenceLiteral {
+public class MethodLiteral implements ReferenceLiteral {
     private Boolean isStatic;
 
     private final ExtendedJClass baseClass;
@@ -65,7 +65,7 @@ public class MethodMetaLiteral implements ReferenceLiteral {
         return isUnknown() && baseClass.isUnknown();
     }
 
-    private MethodMetaLiteral(MethodRef methodRef) {
+    private MethodLiteral(MethodRef methodRef) {
         this.methodRef = methodRef;
         this.methodName = null;
         this.returnType = null;
@@ -74,9 +74,9 @@ public class MethodMetaLiteral implements ReferenceLiteral {
         this.isStatic = null;
     }
 
-    private MethodMetaLiteral(ExtendedJClass baseClass, Optional<String> name,
-                              Optional<List<ExtendedType>> parameterTypes, ExtendedType returnType,
-                              boolean isStatic) {
+    private MethodLiteral(ExtendedJClass baseClass, Optional<String> name,
+                          Optional<List<ExtendedType>> parameterTypes, ExtendedType returnType,
+                          boolean isStatic) {
         this.methodRef = null;
         this.methodName = name;
         this.returnType = returnType;
@@ -107,23 +107,23 @@ public class MethodMetaLiteral implements ReferenceLiteral {
         return World.get().getTypeSystem().getClassType(METHOD);
     }
 
-    public static MethodMetaLiteral from(ExtendedJClass baseClass, Optional<String> name,
-                                         Optional<List<ExtendedType>> parameterTypes,
-                                         ExtendedType returnType, boolean isStatic) {
+    public static MethodLiteral from(ExtendedJClass baseClass, Optional<String> name,
+                                     Optional<List<ExtendedType>> parameterTypes,
+                                     ExtendedType returnType, boolean isStatic) {
         if (baseClass.isUnknown() || name.isEmpty() || parameterTypes.isEmpty()
                 || returnType.isUnknown()) {
-            return new MethodMetaLiteral(baseClass, name, parameterTypes, returnType, isStatic);
+            return new MethodLiteral(baseClass, name, parameterTypes, returnType, isStatic);
         }
         List<Type> actualParaTypes = new ArrayList<>();
         for (ExtendedType extType: parameterTypes.get()) {
             if (extType.isUnknown()) {
-                return new MethodMetaLiteral(baseClass, name, parameterTypes, returnType, isStatic);
+                return new MethodLiteral(baseClass, name, parameterTypes, returnType, isStatic);
             }
-            actualParaTypes.add(extType.getSome());
+            actualParaTypes.add(extType.getType());
         }
 
-        MethodRef methodRef = MethodRef.get(baseClass.getSome(), name.get(), actualParaTypes,
-                                            returnType.getSome(), isStatic);
-        return new MethodMetaLiteral(methodRef);
+        MethodRef methodRef = MethodRef.get(baseClass.getJClass(), name.get(), actualParaTypes,
+                                            returnType.getType(), isStatic);
+        return new MethodLiteral(methodRef);
     }
 }

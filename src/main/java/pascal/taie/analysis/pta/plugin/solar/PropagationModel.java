@@ -53,9 +53,9 @@ public class PropagationModel extends AbstractModel {
             }
             Obj clsObj;
             if (klass == null) {
-                clsObj = heapModel.getConstantObj(ClassMetaLiteral.unknown());
+                clsObj = heapModel.getConstantObj(ExtendedClassLiteral.unknown());
             } else {
-                clsObj = heapModel.getConstantObj(ClassMetaLiteral.from(klass.getType()));
+                clsObj = heapModel.getConstantObj(ExtendedClassLiteral.from(klass.getType()));
             }
             CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
             Var result = invoke.getResult();
@@ -84,7 +84,7 @@ public class PropagationModel extends AbstractModel {
                 }
 
                 Obj mtdObj = heapModel.getConstantObj(
-                        MethodMetaLiteral.from(baseCls, mtdName, parameterTypes, returnType,
+                        MethodLiteral.from(baseCls, mtdName, parameterTypes, returnType,
                                         false) // TODO: Consider static methods
                 );
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
@@ -115,7 +115,7 @@ public class PropagationModel extends AbstractModel {
 
                 // TODO: Consider static methods
                 Obj mtdObj = heapModel.getConstantObj(
-                        FieldMetaLiteral.from(baseCls, fldName, fldType, false));
+                        FieldLiteral.from(baseCls, fldName, fldType, false));
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
                 Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);

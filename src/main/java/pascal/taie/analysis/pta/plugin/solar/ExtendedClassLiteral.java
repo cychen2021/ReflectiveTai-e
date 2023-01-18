@@ -10,14 +10,14 @@ import pascal.taie.util.collection.Pair;
 
 import static pascal.taie.language.classes.ClassNames.CLASS;
 
-public class ClassMetaLiteral implements ReferenceLiteral {
+public class ExtendedClassLiteral implements ReferenceLiteral {
     private final ClassLiteral classLiteral;
 
-    private ClassMetaLiteral(ClassLiteral classLiteral) {
+    private ExtendedClassLiteral(ClassLiteral classLiteral) {
         this.classLiteral = classLiteral;
     }
 
-    private ClassMetaLiteral() {
+    private ExtendedClassLiteral() {
         this.classLiteral = null;
     }
 
@@ -25,17 +25,17 @@ public class ClassMetaLiteral implements ReferenceLiteral {
         return classLiteral == null;
     }
 
-    public static ClassMetaLiteral from(Type value) {
-        return new ClassMetaLiteral(ClassLiteral.get(value));
+    public static ExtendedClassLiteral from(Type value) {
+        return new ExtendedClassLiteral(ClassLiteral.get(value));
     }
 
     public ClassLiteral getClassLiteral() {
         return isUnknown() ? null : classLiteral;
     }
 
-    private static final ClassMetaLiteral unknown = new ClassMetaLiteral();
+    private static final ExtendedClassLiteral unknown = new ExtendedClassLiteral();
 
-    public static ClassMetaLiteral unknown() {
+    public static ExtendedClassLiteral unknown() {
         return unknown;
     }
 
@@ -64,7 +64,7 @@ public class ClassMetaLiteral implements ReferenceLiteral {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ClassMetaLiteral that = (ClassMetaLiteral) o;
+        ExtendedClassLiteral that = (ExtendedClassLiteral) o;
         if (isUnknown()) {
             return that.isUnknown();
         }
