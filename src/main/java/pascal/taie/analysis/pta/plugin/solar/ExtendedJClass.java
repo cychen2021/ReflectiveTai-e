@@ -51,6 +51,14 @@ public class ExtendedJClass {
                 return ExtendedJClass.get(World.get().getClassHierarchy()
                         .getJREClass(ClassNames.OBJECT));
             }
+        } else if (alloc instanceof ClassLiteral klass) {
+            Type type = klass.getTypeValue();
+            if (type instanceof ClassType classType) {
+                return ExtendedJClass.get(classType.getJClass());
+            } else if (type instanceof ArrayType) {
+                return ExtendedJClass.get(World.get().getClassHierarchy()
+                        .getJREClass(ClassNames.OBJECT));
+            }
         }
         return null;
     }
