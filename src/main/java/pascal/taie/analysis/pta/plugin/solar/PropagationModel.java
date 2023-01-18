@@ -51,15 +51,18 @@ public class PropagationModel extends AbstractModel {
             } else {
                 klass = hierarchy.getClass(className);
             }
-            Obj clsObj;
-            if (klass == null) {
-                clsObj = heapModel.getConstantObj(ExtendedClassLiteral.unknown());
-            } else {
-                clsObj = heapModel.getConstantObj(ExtendedClassLiteral.from(klass.getType()));
-            }
-            CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
+            solver.initializeClass(klass);
             Var result = invoke.getResult();
-            solver.addVarPointsTo(context, result, csObj);
+            if (result != null) {
+                Obj clsObj;
+                if (klass == null) {
+                    clsObj = heapModel.getConstantObj(ExtendedClassLiteral.unknown());
+                } else {
+                    clsObj = heapModel.getConstantObj(ExtendedClassLiteral.from(klass.getType()));
+                }
+                CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
+                solver.addVarPointsTo(context, result, csObj);
+            }
         });
     }
 
