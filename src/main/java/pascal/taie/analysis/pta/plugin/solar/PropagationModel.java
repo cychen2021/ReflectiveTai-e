@@ -33,12 +33,12 @@ public class PropagationModel extends AbstractModel {
         registerAPIHandler(classForName2, this::classForName);
 
         JMethod classGetMethod = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Method getMethod(java.lang.String, java.lang.Class[])>");
-        registerRelevantVarIndexes(classForName, BASE, 0);
-        registerAPIHandler(classForName, this::classGetMethod);
+        registerRelevantVarIndexes(classGetMethod, BASE, 0);
+        registerAPIHandler(classGetMethod, this::classGetMethod);
 
         JMethod classGetField = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Field getField(java.lang.String)>");
-        registerRelevantVarIndexes(classForName, BASE, 0);
-        registerAPIHandler(classForName, this::classGetField);
+        registerRelevantVarIndexes(classGetField, BASE, 0);
+        registerAPIHandler(classGetField, this::classGetField);
     }
 
     private void classForName(CSVar csVar, PointsToSet pts, Invoke invoke) {
