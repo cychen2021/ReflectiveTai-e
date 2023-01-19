@@ -5,12 +5,16 @@ import pascal.taie.analysis.graph.callgraph.Edge;
 import pascal.taie.analysis.pta.core.cs.context.Context;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
+import pascal.taie.analysis.pta.core.heap.NewObj;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
+import pascal.taie.analysis.pta.plugin.util.CSObjs;
 import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.InvokeVirtual;
+import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
+import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.ArrayType;
 import pascal.taie.language.type.ClassType;
@@ -37,16 +41,34 @@ public class TransformationModel extends AbstractModel {
         Context context = csVar.getContext();
         List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0, 1);
         PointsToSet mtdMetaObjs = args.get(0);
-        PointsToSet targetObjs = args.get(1);
+        PointsToSet receiveObjs = args.get(1);
         PointsToSet argArrayObjs = args.get(2);
-        var targetVar = invoke.getInvokeExp().getArg(0);
+        var receiveVar = invoke.getInvokeExp().getArg(0);
 
         mtdMetaObjs.forEach(mtd -> {
             MethodMetaObj mtdMetaObj = (MethodMetaObj) mtd.getObject().getAllocation();
             if (!mtdMetaObj.baseClassKnown()) {
                 return;
             }
-            List<JMethod> methods = mtdMetaObj.search();
+            List<JMethod> candidateMethods = mtdMetaObj.search();
+            List<JMethod> methods = new ArrayList<>();
+
+            for (var receiveObj: receiveObjs) {
+                if (receiveObj.getObject().getType() instanceof ClassType receiveType) {
+                    JClass receiveClass = receiveType.getJClass();
+                    for (int i = 0; i < candidateMethods.size(); i++) {
+                        JMethod candidateMethod = candidateMethods.get(i);
+                        JClass declaringClass = candidateMethod.getDeclaringClass();
+                        if (receiveClass.equals(declaringClass)
+                                || hierarchy.isSubclass(declaringClass, receiveClass)) {
+                            methods.add(candidateMethod);
+                            candidateMethods.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
             for (var callee: methods) {
                 List<Var> params = new ArrayList<>();
                 var declaredParamTypes = callee.getParamTypes();
@@ -76,7 +98,7 @@ public class TransformationModel extends AbstractModel {
                 }
 
                 var mockInvoke = new Invoke(callee,
-                        new InvokeVirtual(callee.getRef(), targetVar, params));
+                        new InvokeVirtual(callee.getRef(), receiveVar, params));
                 var mockCallSite = csManager.getCSCallSite(context, mockInvoke);
                 var csCallee = csManager.getCSMethod(context, callee);
                 solver.addCallEdge(new Edge<>(CallKind.VIRTUAL, mockCallSite, csCallee));
