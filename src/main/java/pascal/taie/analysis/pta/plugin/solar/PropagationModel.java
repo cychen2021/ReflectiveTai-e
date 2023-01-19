@@ -12,6 +12,7 @@ import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
+import pascal.taie.language.type.Type;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,9 +37,9 @@ public class PropagationModel extends AbstractModel {
         registerRelevantVarIndexes(classGetMethod, BASE, 0);
         registerAPIHandler(classGetMethod, this::classGetMethod);
 
-        JMethod classGetField = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Field getField(java.lang.String)>");
-        registerRelevantVarIndexes(classGetField, BASE, 0);
-        registerAPIHandler(classGetField, this::classGetField);
+        JMethod classGetMethods = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Method[] getMethods()>");
+        registerRelevantVarIndexes(classGetMethods, BASE);
+        registerAPIHandler(classGetMethods, this::classGetMethods);
     }
 
     private void classForName(CSVar csVar, PointsToSet pts, Invoke invoke) {
@@ -54,12 +55,14 @@ public class PropagationModel extends AbstractModel {
             solver.initializeClass(klass);
             Var result = invoke.getResult();
             if (result != null) {
-                Obj clsObj;
+                ClassMetaObj metaObj;
                 if (klass == null) {
-                    clsObj = heapModel.getConstantObj(ExtendedClassLiteral.unknown());
+                    metaObj = ClassMetaObj.unknown();
                 } else {
-                    clsObj = heapModel.getConstantObj(ExtendedClassLiteral.from(klass.getType()));
+                    metaObj = ClassMetaObj.known(klass);
                 }
+
+                Obj clsObj = heapModel.getMockObj("ClassMetaObj", metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
                 solver.addVarPointsTo(context, result, csObj);
             }
@@ -74,22 +77,12 @@ public class PropagationModel extends AbstractModel {
         mNameObjs.forEach(mNameObj -> {
             baseClsObjs.forEach(baseClsObj -> {
                 String mName = CSObjs.toString(mNameObj);
-                ExtendedJClass baseCls = ExtendedJClass.from(baseClsObj);
-                assert baseCls != null;
+                JClass baseCls = CSObjs.toClass(baseClsObj);
 
-                ExtendedType returnType = ExtendedType.unknown();
-                Optional<List<ExtendedType>> parameterTypes = Optional.empty();
-                Optional<String> mtdName;
-                if (mName == null) {
-                    mtdName = Optional.empty();
-                } else {
-                    mtdName = Optional.of(mName);
-                }
+                 // TODO: Consider static methods
+                MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, mName, null, null);
 
-                Obj mtdObj = heapModel.getConstantObj(
-                        MethodLiteral.from(baseCls, mtdName, parameterTypes, returnType,
-                                        false) // TODO: Consider static methods
-                );
+                Obj mtdObj = heapModel.getMockObj("MethodMetaObj", metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
                 Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);
@@ -97,32 +90,22 @@ public class PropagationModel extends AbstractModel {
         });
     }
 
-    private void classGetField(CSVar csVar, PointsToSet pts, Invoke invoke) {
+    private void classGetMethods(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
         List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0);
         PointsToSet baseClsObjs = args.get(0);
-        PointsToSet mNameObjs = args.get(1);
-        mNameObjs.forEach(fNameObj -> {
-            baseClsObjs.forEach(baseClsObj -> {
-                String mName = CSObjs.toString(fNameObj);
-                ExtendedJClass baseCls = ExtendedJClass.from(baseClsObj);
-                assert baseCls != null;
+        baseClsObjs.forEach(baseClsObj -> {
+            JClass baseCls = CSObjs.toClass(baseClsObj);
 
-                ExtendedType fldType = ExtendedType.unknown();
-                Optional<String> fldName;
-                if (mName == null) {
-                    fldName = Optional.empty();
-                } else {
-                    fldName = Optional.of(mName);
-                }
+            // TODO: Consider static methods
+            MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, null, null, null);
 
-                // TODO: Consider static methods
-                Obj mtdObj = heapModel.getConstantObj(
-                        FieldLiteral.from(baseCls, fldName, fldType, false));
-                CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
-                Var result = invoke.getResult();
-                solver.addVarPointsTo(context, result, csObj);
-            });
+
+            Obj mtdObj = heapModel.getMockObj("MethodMetaObj", metaObj,
+                    typeSystem.getArrayType(metaObj.getType(), 1));
+            CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
+            Var result = invoke.getResult();
+            solver.addVarPointsTo(context, result, csObj);
         });
     }
 }
