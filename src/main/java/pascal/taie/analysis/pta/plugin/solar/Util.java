@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Util {
-    public static List<JClass> superClassesIncluded(JClass klass) {
+    public static List<JClass> superClassesOfIncluded(JClass klass) {
         List<JClass> result = new ArrayList<>();
 
         JClass superKlass = klass;
@@ -16,9 +16,5 @@ public class Util {
             superKlass = superKlass.getSuperClass();
         }
         return result;
-    }
-
-    public static List<JClass> subClassesIncluded(JClass klass, ClassHierarchy hierarchy) {
-        return hierarchy.getAllSubclassesOf(klass).stream().toList();
     }
 }

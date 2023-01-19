@@ -117,7 +117,7 @@ public class MethodMetaObj {
             result.add(baseClass.getDeclaredMethod(methodName));
             return result;
         }
-        var superClasses = Util.superClassesIncluded(baseClass);
+        var superClasses = Util.superClassesOfIncluded(baseClass);
 
         for (var candidateBaseClass: superClasses) {
             var candidates = candidateBaseClass.getDeclaredMethods();
