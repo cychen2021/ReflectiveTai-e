@@ -4,7 +4,8 @@ import com.sun.istack.NotNull;
 import pascal.taie.World;
 import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.language.classes.JClass;
-import pascal.taie.language.type.ReferenceType;
+import pascal.taie.language.classes.JMethod;
+import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.Type;
 
 import javax.annotation.Nullable;
@@ -13,7 +14,6 @@ import static pascal.taie.language.classes.ClassNames.METHOD;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class MethodMetaObj {
     private Boolean isStatic;
@@ -103,7 +103,44 @@ public class MethodMetaObj {
 
         return new MethodMetaObj(baseClass, name, parameterTypes, returnType, true);
     }
-    public ReferenceType getType() {
-        return World.get().getTypeSystem().getClassType(METHOD);
+
+    public static final ClassType TYPE = World.get().getTypeSystem().getClassType(METHOD);
+
+    public static final String DESC = "MethodMetaObj";
+
+    public List<JMethod> search() {
+        if (!baseClassKnown()) {
+            throw new IllegalStateException("Cannot search for a method without a known base class.");
+        }
+        List<JMethod> result = new ArrayList<>();
+        if (methodNameKnown()) {
+            result.add(baseClass.getDeclaredMethod(methodName));
+            return result;
+        }
+        var superClasses = Util.superClassesIncluded(baseClass);
+
+        for (var candidateBaseClass: superClasses) {
+            var candidates = candidateBaseClass.getDeclaredMethods();
+            var filtered = candidates.stream().filter(m -> {
+                boolean returnMatched = returnTypeKnown() ? m.getReturnType().equals(returnType) : true;
+                boolean parameterMatched = true;
+                if (parameterTypesKnown()) {
+                    var mParameters = m.getParamTypes();
+                    if (mParameters.size() != parameterTypes.size()) {
+                        parameterMatched = false;
+                    } else {
+                        for (int i = 0; i < mParameters.size(); i++) {
+                            if (!mParameters.get(i).equals(parameterTypes.get(i))) {
+                                parameterMatched = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                return returnMatched && parameterMatched;
+            }).toList();
+            result.addAll(filtered);
+        }
+        return result;
     }
 }

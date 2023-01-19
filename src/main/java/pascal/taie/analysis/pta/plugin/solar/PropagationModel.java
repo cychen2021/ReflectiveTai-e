@@ -60,7 +60,7 @@ public class PropagationModel extends AbstractModel {
                     metaObj = ClassMetaObj.known(klass);
                 }
 
-                Obj clsObj = heapModel.getMockObj("ClassMetaObj", metaObj, metaObj.getType());
+                Obj clsObj = heapModel.getMockObj(ClassMetaObj.DESC, metaObj, ClassMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
                 solver.addVarPointsTo(context, result, csObj);
             }
@@ -76,11 +76,15 @@ public class PropagationModel extends AbstractModel {
             baseClsObjs.forEach(baseClsObj -> {
                 String mName = CSObjs.toString(mNameObj);
                 JClass baseCls = CSObjs.toClass(baseClsObj);
+                if (baseCls == null) {
+                    ClassMetaObj clsMetaObj = (ClassMetaObj) baseClsObj.getObject().getAllocation();
+                    baseCls = clsMetaObj.getJClass();
+                }
 
                  // TODO: Consider static methods
                 MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, mName, null, null);
 
-                Obj mtdObj = heapModel.getMockObj("MethodMetaObj", metaObj, metaObj.getType());
+                Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj, MethodMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
                 Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);
@@ -99,8 +103,8 @@ public class PropagationModel extends AbstractModel {
             MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, null, null, null);
 
 
-            Obj mtdObj = heapModel.getMockObj("MethodMetaObj", metaObj,
-                    typeSystem.getArrayType(metaObj.getType(), 1));
+            Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj,
+                    typeSystem.getArrayType(MethodMetaObj.TYPE, 1));
             CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
             Var result = invoke.getResult();
             solver.addVarPointsTo(context, result, csObj);

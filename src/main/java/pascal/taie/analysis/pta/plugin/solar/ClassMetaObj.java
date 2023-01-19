@@ -29,11 +29,15 @@ public class ClassMetaObj {
         return new ClassMetaObj(klass);
     }
 
-    public ClassType getType() {
-        return World.get().getTypeSystem().getClassType(CLASS);
-    }
+    public static final ClassType TYPE = World.get().getTypeSystem().getClassType(CLASS);
+
+    public static final String DESC = "ClassMetaObj";
 
     public boolean isKnown() {
         return knownClass != null;
+    }
+
+    public JClass getJClass() {
+        return knownClass;
     }
 }

@@ -1,8 +1,5 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
-import pascal.taie.analysis.graph.callgraph.Edge;
-import pascal.taie.analysis.pta.core.cs.element.CSCallSite;
-import pascal.taie.analysis.pta.core.cs.element.CSMethod;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.Plugin;
@@ -10,14 +7,13 @@ import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.language.classes.JMethod;
 
 public class SolarAnalysis implements Plugin {
-    private Solver solver;
-
     private PropagationModel propagationModel;
+    private TransformationModel transformationModel;
 
     @Override
     public void setSolver(Solver solver) {
-        this.solver = solver;
         this.propagationModel = new PropagationModel(solver);
+        this.transformationModel = new TransformationModel(solver);
     }
 
     @Override
@@ -25,17 +21,16 @@ public class SolarAnalysis implements Plugin {
         if (propagationModel.isRelevantVar(csVar.getVar())) {
             propagationModel.handleNewPointsToSet(csVar, pts);
         }
-    }
-
-    @Override
-    public void onNewCallEdge(Edge<CSCallSite, CSMethod> edge) {
-        Plugin.super.onNewCallEdge(edge);
+        if (transformationModel.isRelevantVar(csVar.getVar())) {
+            transformationModel.handleNewPointsToSet(csVar, pts);
+        }
     }
 
     @Override
     public void onNewMethod(JMethod method) {
         method.getIR().invokes(false).forEach(invoke -> {
             propagationModel.handleNewInvoke(invoke);
+            transformationModel.handleNewInvoke(invoke);
         });
     }
 }
