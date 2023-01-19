@@ -113,13 +113,16 @@ public class MethodMetaObj {
             throw new IllegalStateException("Cannot search for a method without a known base class.");
         }
         List<JMethod> result = new ArrayList<>();
-        if (methodNameKnown()) {
-            result.add(baseClass.getDeclaredMethod(methodName));
-            return result;
-        }
         var superClasses = Util.superClassesOfIncluded(baseClass);
-
         for (var candidateBaseClass: superClasses) {
+            if (methodNameKnown()) {
+                var methodToAdd = candidateBaseClass.getDeclaredMethod(methodName);
+                if (methodToAdd != null) {
+                    result.add(methodToAdd);
+                }
+                continue;
+            }
+
             var candidates = candidateBaseClass.getDeclaredMethods();
             var filtered = candidates.stream().filter(m -> {
                 boolean returnMatched = returnTypeKnown() ? m.getReturnType().equals(returnType) : true;
