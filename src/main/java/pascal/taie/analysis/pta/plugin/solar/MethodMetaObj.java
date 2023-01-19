@@ -2,8 +2,6 @@ package pascal.taie.analysis.pta.plugin.solar;
 
 import com.sun.istack.NotNull;
 import pascal.taie.World;
-import pascal.taie.ir.exp.ExpVisitor;
-import pascal.taie.ir.exp.ReferenceLiteral;
 import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.type.ReferenceType;

@@ -12,10 +12,8 @@ import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
-import pascal.taie.language.type.Type;
 
 import java.util.List;
-import java.util.Optional;
 
 public class PropagationModel extends AbstractModel {
     PropagationModel(Solver solver) {
