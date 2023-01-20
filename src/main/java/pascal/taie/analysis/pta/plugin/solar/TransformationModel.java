@@ -13,6 +13,7 @@ import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.InvokeVirtual;
 import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
@@ -22,6 +23,7 @@ import pascal.taie.language.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
@@ -50,20 +52,16 @@ public class TransformationModel extends AbstractModel {
             if (!mtdMetaObj.baseClassKnown()) {
                 return;
             }
-            List<JMethod> candidateMethods = mtdMetaObj.search();
+            Set<MethodRef> methodRefs = mtdMetaObj.search();
             List<JMethod> methods = new ArrayList<>();
 
             for (var receiveObj: receiveObjs) {
-                if (receiveObj.getObject().getType() instanceof ClassType receiveType) {
-                    JClass receiveClass = receiveType.getJClass();
-                    for (int i = 0; i < candidateMethods.size(); i++) {
-                        JMethod candidateMethod = candidateMethods.get(i);
-                        JClass declaringClass = candidateMethod.getDeclaringClass();
-                        if (receiveClass.equals(declaringClass)
-                                || hierarchy.isSubclass(declaringClass, receiveClass)) {
-                            methods.add(candidateMethod);
-                            candidateMethods.remove(i);
-                            break;
+                Type receiveType = receiveObj.getObject().getType();
+                if (isConcerned(receiveType)) {
+                    for (MethodRef methodRef: methodRefs) {
+                        JMethod method = hierarchy.dispatch(receiveType, methodRef);
+                        if (method != null) {
+                            methods.add(method);
                         }
                     }
                 }

@@ -13,7 +13,9 @@ import javax.annotation.Nullable;
 import static pascal.taie.language.classes.ClassNames.METHOD;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MethodMetaObj {
     private Boolean isStatic;
@@ -108,20 +110,14 @@ public class MethodMetaObj {
 
     public static final String DESC = "MethodMetaObj";
 
-    public List<JMethod> search() {
+    public Set<MethodRef> search() {
         if (!baseClassKnown()) {
             throw new IllegalStateException("Cannot search for a method without a known base class.");
         }
-        List<JMethod> result = new ArrayList<>();
-        var subClasses = World.get().getClassHierarchy().getAllSubclassesOf(baseClass);
-        var superClasses = Util.superClassesOf(baseClass);
-        List<JClass> toSearch = new ArrayList<>(subClasses.size() + superClasses.size());
-        for (var subClass: subClasses) {
-            toSearch.add(0, subClass);
-        }
-        toSearch.addAll(superClasses);
-        for (var candidateBaseClass: toSearch) {
-            var candidates = candidateBaseClass.getDeclaredMethods();
+        Set<MethodRef> result = new HashSet<>();
+        JClass klass = baseClass;
+        while (klass != null) {
+            var candidates = klass.getDeclaredMethods();
             var filtered = candidates.stream().filter(m -> {
                 // TODO: Consider private methods retrieved by getDeclaredMethod/getDeclaredMethods.
                 if (!m.isPublic()) {
@@ -144,8 +140,9 @@ public class MethodMetaObj {
                     }
                 }
                 return returnMatched && nameMatched && parameterMatched;
-            }).toList();
+            }).map(JMethod::getRef).toList();
             result.addAll(filtered);
+            klass = klass.getSuperClass();
         }
         return result;
     }
