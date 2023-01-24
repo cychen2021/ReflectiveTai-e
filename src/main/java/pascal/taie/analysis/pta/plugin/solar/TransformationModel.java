@@ -48,7 +48,9 @@ public class TransformationModel extends AbstractModel {
         var receiveVar = invoke.getInvokeExp().getArg(0);
 
         mtdMetaObjs.forEach(mtd -> {
-            MethodMetaObj mtdMetaObj = (MethodMetaObj) mtd.getObject().getAllocation();
+            if (!(mtd.getObject().getAllocation() instanceof MethodMetaObj mtdMetaObj)) {
+                return;
+            }
             if (!mtdMetaObj.baseClassKnown()) {
                 return;
             }
