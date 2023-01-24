@@ -27,6 +27,10 @@ public class MethodMetaObj {
 
     private final MethodRef methodRef;
 
+    public List<Type> getParameterTypes() {
+        return parameterTypes;
+    }
+
     public boolean isKnown() {
         return methodRef != null;
     }

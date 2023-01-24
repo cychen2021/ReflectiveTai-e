@@ -9,11 +9,13 @@ import pascal.taie.language.classes.JMethod;
 public class SolarAnalysis implements Plugin {
     private PropagationModel propagationModel;
     private TransformationModel transformationModel;
+    private CollectiveInference collectiveInference;
 
     @Override
     public void setSolver(Solver solver) {
         this.propagationModel = new PropagationModel(solver);
         this.transformationModel = new TransformationModel(solver);
+        this.collectiveInference = new CollectiveInference(solver);
     }
 
     @Override
