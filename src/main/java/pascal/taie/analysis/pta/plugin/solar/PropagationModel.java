@@ -5,7 +5,6 @@ import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.heap.Obj;
-import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.plugin.util.CSObjs;
@@ -14,6 +13,8 @@ import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
+
+import static pascal.taie.analysis.pta.plugin.solar.MethodMetaObj.SignatureRecord;
 
 import java.util.List;
 
@@ -83,7 +84,7 @@ public class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, mName, null, null, null);
+                MethodMetaObj metaObj = MethodMetaObj.of(baseCls, SignatureRecord.of(mName, null, null));
 
                 Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj, MethodMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
@@ -104,7 +105,7 @@ public class PropagationModel extends AbstractModel {
                 baseCls = clsMetaObj.getJClass();
             }
 
-            MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, null, null, null, null);
+            MethodMetaObj metaObj = MethodMetaObj.of(baseCls, null);
 
             Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj,
                     typeSystem.getArrayType(MethodMetaObj.TYPE, 1));

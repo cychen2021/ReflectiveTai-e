@@ -5,6 +5,8 @@ import pascal.taie.ir.exp.IntLiteral;
 import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.stmt.New;
 import pascal.taie.language.classes.JClass;
+import pascal.taie.language.type.ClassType;
+import pascal.taie.language.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,5 +45,12 @@ public class Util {
         List<JClass> superClasses = superClassesOf(jClass);
         superClasses.add(0, jClass);
         return superClasses;
+    }
+
+    static boolean typeUnknown(Type type) {
+         if (type instanceof ClassType classType) {
+             return classType.getName().equals("UnknownClassName");
+         }
+         return false;
     }
 }

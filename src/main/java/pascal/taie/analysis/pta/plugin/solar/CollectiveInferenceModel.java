@@ -1,10 +1,10 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
+import com.sun.istack.NotNull;
 import pascal.taie.analysis.pta.core.cs.context.Context;
+import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.heap.Obj;
@@ -21,7 +21,10 @@ import pascal.taie.language.type.PrimitiveType;
 import pascal.taie.language.type.Type;
 import pascal.taie.language.type.VoidType;
 
+import javax.annotation.Nullable;
+
 import static pascal.taie.analysis.pta.plugin.solar.Util.*;
+import static pascal.taie.analysis.pta.plugin.solar.MethodMetaObj.SignatureRecord;
 
 class CollectiveInferenceModel extends AbstractModel {
 
@@ -57,22 +60,27 @@ class CollectiveInferenceModel extends AbstractModel {
         PointsToSet argObjs = args.get(2); // args
         Context context = csVar.getContext();
 
+        boolean recvObjContainsUnknown = recvObjs.objects().anyMatch(csObj -> {
+            if (csObj.getObject().getType() instanceof ClassType classType) {
+                return typeUnknown(classType);
+            }
+            return false;
+        });
+
         mtdObjs.forEach(mtdObj -> {
             if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
                 return;
             }
-            boolean mtdSigKnown = methodMetaObj.methodNameKnown() && methodMetaObj.returnTypeKnown()
-                    && methodMetaObj.parameterTypesKnown();
-            if (!methodMetaObj.baseClassKnown()) {
-                solver.addVarPointsTo(context, m, invTp(recvObjs));
-                if (mtdSigKnown) { // TODO pt(y) is not checked
-                    // validate the method signature inside this sub-function
-                    solver.addVarPointsTo(context, m, invS2T(mtdObjs, argObjs, A));
-                }
+            if (!methodMetaObj.baseClassKnown() && !recvObjContainsUnknown) {
+                solver.addVarPointsTo(context, m, invTp(methodMetaObj.getSignature(), recvObjs));
             }
-
-            if (!mtdSigKnown) {
+            if (!methodMetaObj.signatureKnown()) {
                 solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
+            }
+            if (!methodMetaObj.baseClassKnown() && recvObjContainsUnknown
+                    && methodMetaObj.getMethodName() != null
+                    && methodMetaObj.getParameterTypes() != null) {
+                solver.addVarPointsTo(context, m, invS2T(methodMetaObj.getSignature(), argObjs, A));
             }
         });
     }
@@ -80,19 +88,20 @@ class CollectiveInferenceModel extends AbstractModel {
     /**
      * I-InvTp: use the type(s) of pt(y) to infer the class type of a method
      *
+     * @param signature  the original method meta-object's signature
      * @param recvObjs points-to set of the receiver object `y`
      * @return new objects pointed to by `m`
      */
-    private PointsToSet invTp(PointsToSet recvObjs) {
+    private PointsToSet invTp(SignatureRecord signature, PointsToSet recvObjs) {
         PointsToSet result = solver.makePointsToSet();
 
         for (CSObj recvObj : recvObjs) {
-            if (!(recvObj.getObject().getAllocation() instanceof ClassMetaObj classMetaObj)) {
+            Type recvType = recvObj.getObject().getType();
+            if (!(recvType instanceof ClassType classType)) {
                 continue;
             }
-            if (classMetaObj.isKnown()) {
-                MethodMetaObj methodMetaObj = MethodMetaObj.unknown(classMetaObj.getJClass(), null,
-                        null, null, null);
+            if (!typeUnknown(classType)) {
+                MethodMetaObj methodMetaObj = MethodMetaObj.of(classType.getJClass(), signature);
                 Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, methodMetaObj,
                         MethodMetaObj.TYPE);
 
@@ -107,7 +116,7 @@ class CollectiveInferenceModel extends AbstractModel {
      * I-InvSig: use the information available at a call site (excluding y) to infer
      * the descriptor of a method signature
      *
-     * @param baseClass base class of the method
+     * @param baseClass  the original method meta-object's base class
      * @param argObjs    points-to set of args in `x = (A) m.invoke(y, args)`
      * @param resultType A
      * @return new objects pointed to by `m`
@@ -128,13 +137,23 @@ class CollectiveInferenceModel extends AbstractModel {
             allPossibleReturnTypes.addAll(hierarchy.getAllSubclassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
         }
 
-        // TODO: Refine the search based on known arg types.
-        for (var possibleReturnTypes: allPossibleReturnTypes) {
-            result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                    MethodMetaObj.DESC,
-                    MethodMetaObj.unknown(baseClass, null, null, possibleReturnTypes, null),
-                    MethodMetaObj.TYPE
-            )));
+        var allPossibleArgTypes = findArgTypes(argObjs);
+        for (var possibleReturnType: allPossibleReturnTypes) {
+            if (allPossibleArgTypes == null) {
+                result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                        MethodMetaObj.DESC,
+                        MethodMetaObj.of(baseClass, SignatureRecord.of(null, null, possibleReturnType)),
+                        MethodMetaObj.TYPE
+                )));
+            } else {
+                for (var possibleArgTypes: allPossibleArgTypes) {
+                    result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                            MethodMetaObj.DESC,
+                            MethodMetaObj.of(baseClass, SignatureRecord.of(null, possibleArgTypes, possibleReturnType)),
+                            MethodMetaObj.TYPE
+                    )));
+                }
+            }
         }
 
         return result;
@@ -143,21 +162,105 @@ class CollectiveInferenceModel extends AbstractModel {
     /**
      * I-InvS2T: use a method signature to infer the class type of a method
      *
-     * @param mtdObjs    points-to set of the method object `m` in `x = (A)
-     *                   m.invoke(y, args)`
+     * @param signature  the original method meta-object's signature
      * @param argObjs    `args`
      * @param resultType A
      * @return new objects pointed to by `m`
      */
-    private PointsToSet invS2T(PointsToSet mtdObjs, PointsToSet argObjs, Type resultType) {
+    private PointsToSet invS2T(SignatureRecord signature, PointsToSet argObjs,
+                               Type resultType) {
         PointsToSet result = solver.makePointsToSet();
-        // TODO
+        if (signature.methodName() == null || signature.paramTypes() == null) {
+            throw new RuntimeException("Unreachable");
+        }
+        Type returnType = signature.returnType();
+        if (returnType != null && !returnType.equals(resultType)
+                && !typeSystem.isSubtype(returnType, resultType)
+                && !typeSystem.isSubtype(resultType, returnType)) {
+            return result;
+        }
+
+        var ptp = findArgTypes(argObjs);
+        if (ptp != null && !ptp.contains(signature.paramTypes())) {
+            return result;
+        }
+
+        var possibleClasses = findClassByMethodSignature(signature.returnType(),
+                signature.methodName(), signature.paramTypes());
+
+        for (var possibleClass: possibleClasses) {
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                    MethodMetaObj.DESC,
+                    MethodMetaObj.of(possibleClass, signature),
+                    MethodMetaObj.TYPE
+            )));
+        }
         return result;
     }
 
-    private List<JClass> findClassByMethodSignature(MethodMetaObj metaObj) {
-        List<JClass> result = List.of();
-        // TODO
+    private Set<List<Type>> findArgTypes(PointsToSet argObjects) {
+        Set<List<Type>> result = new HashSet<>();
+        for (CSObj argArray: argObjects) {
+            int arrLen = constArraySize(argArray.getObject());
+            if (arrLen == -1) {
+                return null;
+            }
+
+            ArrayIndex idx = csManager.getArrayIndex(argArray);
+            Set<Type> elementTypes = new HashSet<>();
+            idx.getObjects().forEach(obj -> {
+                Type t = obj.getObject().getType();
+                elementTypes.add(t);
+            });
+            var somePossibilities = cartesian(elementTypes, arrLen);
+            result.addAll(somePossibilities);
+        }
         return result;
+    }
+
+    private static<T> List<List<T>> cartesian(Set<T> singleChoice, int repeatTimes) {
+        List<List<T>> result = new ArrayList<>();
+        if (repeatTimes == 0) {
+            result.add(new ArrayList<>());
+            return result;
+        }
+        for (T choice: singleChoice) {
+            for (List<T> subResult: cartesian(singleChoice, repeatTimes - 1)) {
+                subResult.add(choice);
+                result.add(subResult);
+            }
+        }
+        return result;
+    }
+
+    private List<JClass> findClassByMethodSignature(@Nullable Type returnType, @NotNull String name,
+                                                    @NotNull List<Type> paramTypes) {
+        return hierarchy.allClasses().filter(klass -> {
+            for (var method : klass.getDeclaredMethods()) {
+                if (!method.isPublic()) {
+                    continue;
+                }
+                if (!method.getName().equals(name)) {
+                    continue;
+                }
+                if (returnType != null && !method.getReturnType().equals(returnType)) {
+                    continue;
+                }
+                if (method.getParamTypes().size() != paramTypes.size()) {
+                    continue;
+                }
+                boolean match = true;
+                for (int i = 0; i < paramTypes.size(); i++) {
+                    if (!method.getParamTypes().get(i).equals(paramTypes.get(i))) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    return true;
+                }
+            }
+            return false;
+        }).toList();
     }
 }
