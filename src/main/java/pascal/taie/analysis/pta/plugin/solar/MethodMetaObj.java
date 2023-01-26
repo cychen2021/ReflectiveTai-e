@@ -66,11 +66,11 @@ public class MethodMetaObj {
         return signature.paramTypes();
     }
 
-    public boolean baseClassKnown() {
+    public boolean baseClassIsKnown() {
         return baseClass != null;
     }
 
-    public boolean signatureKnown() {
+    public boolean signatureIsKnown() {
         return signature != null;
     }
 
@@ -88,7 +88,7 @@ public class MethodMetaObj {
     public static final String DESC = "MethodMetaObj";
 
     public Set<MethodRef> search() {
-        if (!baseClassKnown()) {
+        if (!baseClassIsKnown()) {
             throw new IllegalStateException("Cannot search for a method without a known base class.");
         }
         Set<MethodRef> result = new HashSet<>();

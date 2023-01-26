@@ -51,7 +51,7 @@ public class TransformationModel extends AbstractModel {
             if (!(mtd.getObject().getAllocation() instanceof MethodMetaObj mtdMetaObj)) {
                 return;
             }
-            if (!mtdMetaObj.baseClassKnown()) {
+            if (!mtdMetaObj.baseClassIsKnown()) {
                 return;
             }
             Set<MethodRef> methodRefs = mtdMetaObj.search();

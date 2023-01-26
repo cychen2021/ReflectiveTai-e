@@ -71,13 +71,13 @@ class CollectiveInferenceModel extends AbstractModel {
             if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
                 return;
             }
-            if (!methodMetaObj.baseClassKnown() && !recvObjContainsUnknown) {
+            if (!methodMetaObj.baseClassIsKnown() && !recvObjContainsUnknown) {
                 solver.addVarPointsTo(context, m, invTp(methodMetaObj.getSignature(), recvObjs));
             }
-            if (!methodMetaObj.signatureKnown()) {
+            if (!methodMetaObj.signatureIsKnown()) {
                 solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
             }
-            if (!methodMetaObj.baseClassKnown() && recvObjContainsUnknown
+            if (!methodMetaObj.baseClassIsKnown() && recvObjContainsUnknown
                     && methodMetaObj.getMethodName() != null
                     && methodMetaObj.getParameterTypes() != null) {
                 solver.addVarPointsTo(context, m, invS2T(methodMetaObj.getSignature(), argObjs, A));
