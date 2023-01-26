@@ -36,10 +36,8 @@ class CollectiveInferenceModel extends AbstractModel {
 
         // For x = (A) m.invoke(y, args)
         Var x = invoke.getLValue();
-
         InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp(); // FIXME
         Var m = iExp.getBase();
-
         Type A;
         if (x != null) {
             A = x.getType();
@@ -50,27 +48,24 @@ class CollectiveInferenceModel extends AbstractModel {
         PointsToSet mtdObjs = args.get(0); // m
         PointsToSet recvObjs = args.get(1); // y
         PointsToSet argObjs = args.get(2); // args
-
         Context context = csVar.getContext();
 
         mtdObjs.forEach(mtdObj -> {
-            if (mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj) {
-
-                boolean mtdSigKnown = methodMetaObj.methodNameKnown() && methodMetaObj.returnTypeKnown()
-                        && methodMetaObj.parameterTypesKnown();
-
-                if (!methodMetaObj.baseClassKnown()) {
-                    solver.addVarPointsTo(context, m, invTp(recvObjs));
-
-                    if (mtdSigKnown) { // TODO pt(y) is not checked
-                        // validate the method signature inside this sub-function
-                        solver.addVarPointsTo(context, m, invS2T(mtdObjs, argObjs, A));
-                    }
+            if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
+                return;
+            }
+            boolean mtdSigKnown = methodMetaObj.methodNameKnown() && methodMetaObj.returnTypeKnown()
+                    && methodMetaObj.parameterTypesKnown();
+            if (!methodMetaObj.baseClassKnown()) {
+                solver.addVarPointsTo(context, m, invTp(recvObjs));
+                if (mtdSigKnown) { // TODO pt(y) is not checked
+                    // validate the method signature inside this sub-function
+                    solver.addVarPointsTo(context, m, invS2T(mtdObjs, argObjs, A));
                 }
+            }
 
-                if (!mtdSigKnown) {
-                    solver.addVarPointsTo(context, m, invSig(argObjs, A));
-                }
+            if (!mtdSigKnown) {
+                solver.addVarPointsTo(context, m, invSig(argObjs, A));
             }
         });
     }
@@ -85,7 +80,6 @@ class CollectiveInferenceModel extends AbstractModel {
         PointsToSet result = solver.makePointsToSet();
 
         for (CSObj recvObj : recvObjs) {
-
             if (recvObj.getObject().getAllocation() instanceof ClassMetaObj classMetaObj) {
                 if (classMetaObj.isKnown()) {
                     MethodMetaObj methodMetaObj = MethodMetaObj.unknown(classMetaObj.getJClass(), null,
@@ -130,9 +124,7 @@ class CollectiveInferenceModel extends AbstractModel {
      */
     private PointsToSet invS2T(PointsToSet mtdObjs, PointsToSet argObjs, Type resultType) {
         PointsToSet result = solver.makePointsToSet();
-
         // TODO
-
         return result;
     }
 
