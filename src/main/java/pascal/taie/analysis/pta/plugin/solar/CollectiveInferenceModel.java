@@ -62,7 +62,7 @@ class CollectiveInferenceModel extends AbstractModel {
 
         boolean recvObjContainsUnknown = recvObjs.objects().anyMatch(csObj -> {
             if (csObj.getObject().getType() instanceof ClassType classType) {
-                return typeUnknown(classType);
+                return typeIsUnknown(classType);
             }
             return false;
         });
@@ -100,7 +100,7 @@ class CollectiveInferenceModel extends AbstractModel {
             if (!(recvType instanceof ClassType classType)) {
                 continue;
             }
-            if (!typeUnknown(classType)) {
+            if (!typeIsUnknown(classType)) {
                 MethodMetaObj methodMetaObj = MethodMetaObj.of(classType.getJClass(), signature);
                 Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, methodMetaObj,
                         MethodMetaObj.TYPE);
