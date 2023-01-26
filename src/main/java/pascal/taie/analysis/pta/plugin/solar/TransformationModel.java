@@ -8,22 +8,22 @@ import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.pts.PointsToSet;
-import pascal.taie.ir.exp.IntLiteral;
 import pascal.taie.ir.exp.InvokeVirtual;
-import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.ir.stmt.Invoke;
-import pascal.taie.ir.stmt.New;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.ArrayType;
 import pascal.taie.language.type.ClassType;
+import pascal.taie.language.type.NullType;
 import pascal.taie.language.type.Type;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static pascal.taie.analysis.pta.plugin.solar.Util.constArraySize;
 
 public class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
@@ -57,17 +57,30 @@ public class TransformationModel extends AbstractModel {
             Set<MethodRef> methodRefs = mtdMetaObj.search();
             Set<JMethod> methods = new HashSet<>();
 
-            for (var receiveObj: receiveObjs) {
-                Type receiveType = receiveObj.getObject().getType();
-                if (isConcerned(receiveType)) {
-                    for (MethodRef methodRef: methodRefs) {
-                        JMethod callee = hierarchy.dispatch(receiveType, methodRef);
-                        if (callee != null) {
-                            methods.add(callee);
+            if (receiveVar.isConst() && receiveVar.getConstValue().getType() instanceof NullType) {
+                for (MethodRef methodRef: methodRefs) {
+                    if (!methodRef.isStatic()) {
+                        continue;
+                    }
+                    JMethod callee = hierarchy.dispatch(mtdMetaObj.getBaseClass(), methodRef);
+                    if (callee != null) {
+                        methods.add(callee);
+                    }
+                }
+            } else {
+                for (var receiveObj: receiveObjs) {
+                    Type receiveType = receiveObj.getObject().getType();
+                    if (isConcerned(receiveType)) {
+                        for (MethodRef methodRef: methodRefs) {
+                            JMethod callee = hierarchy.dispatch(receiveType, methodRef);
+                            if (callee != null) {
+                                methods.add(callee);
+                            }
                         }
                     }
                 }
             }
+
             for (var callee: methods) {
                 List<Var> params = new ArrayList<>();
                 var declaredParamTypes = callee.getParamTypes();
@@ -83,7 +96,7 @@ public class TransformationModel extends AbstractModel {
                 List<CSObj> possibleArrObjs = new ArrayList<>();
                 boolean possible = false;
                 for (var arr: argArrayObjs) {
-                    var constArrSize = constArraySize(arr);
+                    var constArrSize = constArraySize(arr.getObject());
                     if (constArrSize != -1 && constArrSize != declaredParamTypes.size()) {
                         continue;
                     }
@@ -134,25 +147,6 @@ public class TransformationModel extends AbstractModel {
      */
     private static boolean isConcerned(Type type) {
         return type instanceof ClassType || type instanceof ArrayType;
-    }
-
-    private static int constArraySize(CSObj csObj) {
-        var alloc = csObj.getObject().getAllocation();
-        if (!(alloc instanceof New newVar)) {
-            return -1;
-        }
-        if (!(newVar.getRValue() instanceof NewArray arr)) {
-            return -1;
-        }
-        var arrSizeVar = arr.getLength();
-        if (!arrSizeVar.isConst()) {
-            return -1;
-        }
-        var arrSizeConst = arrSizeVar.getConstValue();
-        if (!(arrSizeConst instanceof IntLiteral intLiteral)) {
-            return -1;
-        }
-        return intLiteral.getValue();
     }
 }
 

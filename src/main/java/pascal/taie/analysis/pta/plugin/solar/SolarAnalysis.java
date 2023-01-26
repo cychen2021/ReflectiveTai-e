@@ -26,6 +26,9 @@ public class SolarAnalysis implements Plugin {
         if (transformationModel.isRelevantVar(csVar.getVar())) {
             transformationModel.handleNewPointsToSet(csVar, pts);
         }
+        if (collectiveInferenceModel.isRelevantVar(csVar.getVar())) {
+            collectiveInferenceModel.handleNewPointsToSet(csVar, pts);
+        }
     }
 
     @Override
@@ -33,6 +36,7 @@ public class SolarAnalysis implements Plugin {
         method.getIR().invokes(false).forEach(invoke -> {
             propagationModel.handleNewInvoke(invoke);
             transformationModel.handleNewInvoke(invoke);
+            collectiveInferenceModel.handleNewInvoke(invoke);
         });
     }
 }

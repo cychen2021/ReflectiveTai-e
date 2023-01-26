@@ -1,9 +1,11 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
 import pascal.taie.analysis.pta.core.cs.context.Context;
+import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.heap.Obj;
+import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.plugin.util.CSObjs;
@@ -81,8 +83,7 @@ public class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                 // TODO: Consider static methods
-                MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, mName, null, null);
+                MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, mName, null, null, null);
 
                 Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj, MethodMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
@@ -94,20 +95,24 @@ public class PropagationModel extends AbstractModel {
 
     private void classGetMethods(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
-        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0);
+        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE);
         PointsToSet baseClsObjs = args.get(0);
         baseClsObjs.forEach(baseClsObj -> {
             JClass baseCls = CSObjs.toClass(baseClsObj);
+            if (baseCls == null) {
+                ClassMetaObj clsMetaObj = (ClassMetaObj) baseClsObj.getObject().getAllocation();
+                baseCls = clsMetaObj.getJClass();
+            }
 
-            // TODO: Consider static methods
-            MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, null, null, null);
-
+            MethodMetaObj metaObj = MethodMetaObj.unknown(baseCls, null, null, null, null);
 
             Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj,
                     typeSystem.getArrayType(MethodMetaObj.TYPE, 1));
             CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
+            ArrayIndex idx = csManager.getArrayIndex(csObj);
             Var result = invoke.getResult();
             solver.addVarPointsTo(context, result, csObj);
+            solver.addPointsTo(idx, csObj);
         });
     }
 }

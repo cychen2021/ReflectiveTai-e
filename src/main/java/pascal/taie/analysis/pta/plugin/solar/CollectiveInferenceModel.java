@@ -1,5 +1,7 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import pascal.taie.analysis.pta.core.cs.context.Context;
@@ -14,7 +16,12 @@ import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
+import pascal.taie.language.type.ClassType;
+import pascal.taie.language.type.PrimitiveType;
 import pascal.taie.language.type.Type;
+import pascal.taie.language.type.VoidType;
+
+import static pascal.taie.analysis.pta.plugin.solar.Util.*;
 
 class CollectiveInferenceModel extends AbstractModel {
 
@@ -36,13 +43,13 @@ class CollectiveInferenceModel extends AbstractModel {
 
         // For x = (A) m.invoke(y, args)
         Var x = invoke.getLValue();
-        InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp(); // FIXME
+        InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
         Var m = iExp.getBase();
         Type A;
         if (x != null) {
             A = x.getType();
         } else {
-            A = iExp.getType();
+            A = null;
         }
 
         PointsToSet mtdObjs = args.get(0); // m
@@ -65,7 +72,7 @@ class CollectiveInferenceModel extends AbstractModel {
             }
 
             if (!mtdSigKnown) {
-                solver.addVarPointsTo(context, m, invSig(argObjs, A));
+                solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
             }
         });
     }
@@ -80,15 +87,16 @@ class CollectiveInferenceModel extends AbstractModel {
         PointsToSet result = solver.makePointsToSet();
 
         for (CSObj recvObj : recvObjs) {
-            if (recvObj.getObject().getAllocation() instanceof ClassMetaObj classMetaObj) {
-                if (classMetaObj.isKnown()) {
-                    MethodMetaObj methodMetaObj = MethodMetaObj.unknown(classMetaObj.getJClass(), null,
-                            null, null);
-                    Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, methodMetaObj,
-                            MethodMetaObj.TYPE);
+            if (!(recvObj.getObject().getAllocation() instanceof ClassMetaObj classMetaObj)) {
+                continue;
+            }
+            if (classMetaObj.isKnown()) {
+                MethodMetaObj methodMetaObj = MethodMetaObj.unknown(classMetaObj.getJClass(), null,
+                        null, null, null);
+                Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, methodMetaObj,
+                        MethodMetaObj.TYPE);
 
-                    result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
-                }
+                result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
             }
         }
 
@@ -99,15 +107,34 @@ class CollectiveInferenceModel extends AbstractModel {
      * I-InvSig: use the information available at a call site (excluding y) to infer
      * the descriptor of a method signature
      *
+     * @param baseClass base class of the method
      * @param argObjs    points-to set of args in `x = (A) m.invoke(y, args)`
      * @param resultType A
      * @return new objects pointed to by `m`
      */
-    private PointsToSet invSig(PointsToSet argObjs, Type resultType) {
+    private PointsToSet invSig(JClass baseClass, PointsToSet argObjs, Type resultType) {
         PointsToSet result = solver.makePointsToSet();
 
-        for (CSObj argObj : argObjs) {
-            // TODO
+        List<Type> allPossibleReturnTypes = new ArrayList<>();
+
+        if (resultType == null) {
+            allPossibleReturnTypes.addAll(hierarchy.allClasses().map(JClass::getType).toList());
+            allPossibleReturnTypes.add(VoidType.VOID);
+            allPossibleReturnTypes.addAll(Arrays.stream(PrimitiveType.values()).toList());
+        } else if (!(resultType instanceof ClassType classType)) {
+            allPossibleReturnTypes.add(resultType);
+        } else {
+            allPossibleReturnTypes.addAll(superClassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
+            allPossibleReturnTypes.addAll(hierarchy.getAllSubclassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
+        }
+
+        // TODO: Refine the search based on known arg types.
+        for (var possibleReturnTypes: allPossibleReturnTypes) {
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                    MethodMetaObj.DESC,
+                    MethodMetaObj.unknown(baseClass, null, null, possibleReturnTypes, null),
+                    MethodMetaObj.TYPE
+            )));
         }
 
         return result;
@@ -124,13 +151,6 @@ class CollectiveInferenceModel extends AbstractModel {
      */
     private PointsToSet invS2T(PointsToSet mtdObjs, PointsToSet argObjs, Type resultType) {
         PointsToSet result = solver.makePointsToSet();
-        // TODO
-        return result;
-    }
-
-    private boolean parameterTypesValidation(MethodMetaObj methodMetaObj, PointsToSet argArray) {
-        boolean result = false;
-        List<Type> parameterTypes = methodMetaObj.getParameterTypes();
         // TODO
         return result;
     }

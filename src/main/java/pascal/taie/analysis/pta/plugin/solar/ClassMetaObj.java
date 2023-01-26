@@ -8,6 +8,7 @@ import pascal.taie.language.type.ClassType;
 import static pascal.taie.language.classes.ClassNames.CLASS;
 
 import javax.annotation.Nullable;
+import java.util.Objects;
 
 public class ClassMetaObj {
     private final JClass knownClass;
@@ -39,5 +40,18 @@ public class ClassMetaObj {
 
     public JClass getJClass() {
         return knownClass;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ClassMetaObj metaObj = (ClassMetaObj) o;
+        return Objects.equals(knownClass, metaObj.knownClass);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(knownClass);
     }
 }

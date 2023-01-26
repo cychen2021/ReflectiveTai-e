@@ -7,15 +7,13 @@ import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.Type;
+import pascal.taie.language.type.VoidType;
 
 import javax.annotation.Nullable;
 
 import static pascal.taie.language.classes.ClassNames.METHOD;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class MethodMetaObj {
     private Boolean isStatic;
@@ -24,6 +22,10 @@ public class MethodMetaObj {
     private final String methodName;
     private final Type returnType;
     private final List<Type> parameterTypes;
+
+    public JClass getBaseClass() {
+        return baseClass;
+    }
 
     private final MethodRef methodRef;
 
@@ -70,7 +72,7 @@ public class MethodMetaObj {
 
     private MethodMetaObj(@Nullable JClass baseClass, @Nullable String name,
                           @Nullable List<Type> parameterTypes, @Nullable Type returnType,
-                          boolean isStatic) {
+                          @Nullable Boolean isStatic) {
         this.methodRef = null;
         this.methodName = name;
         this.returnType = returnType;
@@ -91,28 +93,22 @@ public class MethodMetaObj {
     public static MethodMetaObj unknown(@Nullable JClass baseClass,
                                         @Nullable String name,
                                         @Nullable List<Type> parameterTypes,
-                                        @Nullable Type returnType) {
+                                        @Nullable Type returnType,
+                                        @Nullable Boolean isStatic) {
         if (baseClass != null && name != null && parameterTypes != null && returnType != null) {
             throw new IllegalArgumentException("Cannot create an unknown MethodMetaObj with all known information.");
         }
 
-        return new MethodMetaObj(baseClass, name, parameterTypes, returnType, false);
-    }
-
-    public static MethodMetaObj unknownStatic(@Nullable JClass baseClass,
-                                        @Nullable String name,
-                                        @Nullable List<Type> parameterTypes,
-                                        @Nullable Type returnType) {
-        if (baseClass != null && name != null && parameterTypes != null && returnType != null) {
-            throw new IllegalArgumentException("Cannot create an unknown MethodMetaObj with all known information.");
-        }
-
-        return new MethodMetaObj(baseClass, name, parameterTypes, returnType, true);
+        return new MethodMetaObj(baseClass, name, parameterTypes, returnType, isStatic);
     }
 
     public static final ClassType TYPE = World.get().getTypeSystem().getClassType(METHOD);
 
     public static final String DESC = "MethodMetaObj";
+
+    public boolean staticKnown() {
+        return !isKnown() && isStatic != null;
+    }
 
     public Set<MethodRef> search() {
         if (!baseClassKnown()) {
@@ -125,6 +121,9 @@ public class MethodMetaObj {
             var filtered = candidates.stream().filter(m -> {
                 // TODO: Consider private methods retrieved by getDeclaredMethod/getDeclaredMethods.
                 if (!m.isPublic()) {
+                    return false;
+                }
+                if (staticKnown() && isStatic != m.isStatic()) {
                     return false;
                 }
                 boolean returnMatched = returnTypeKnown() ? m.getReturnType().equals(returnType) : true;
@@ -149,5 +148,30 @@ public class MethodMetaObj {
             klass = klass.getSuperClass();
         }
         return result;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MethodMetaObj that = (MethodMetaObj) o;
+
+        if (!isKnown() && that.isKnown() || isKnown() && !that.isKnown()) {
+            return false;
+        }
+
+        if (isKnown() && that.isKnown()) {
+            return Objects.equals(methodRef, that.methodRef);
+        }
+
+        return Objects.equals(isStatic, that.isStatic) && Objects.equals(baseClass, that.baseClass) && Objects.equals(methodName, that.methodName) && Objects.equals(returnType, that.returnType) && Objects.equals(parameterTypes, that.parameterTypes);
+    }
+
+    @Override
+    public int hashCode() {
+        if (isKnown()) {
+            return Objects.hash(methodRef);
+        }
+        return Objects.hash(isStatic, baseClass, methodName, returnType, parameterTypes);
     }
 }
