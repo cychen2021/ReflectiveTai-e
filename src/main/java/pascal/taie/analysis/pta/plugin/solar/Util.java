@@ -11,7 +11,7 @@ import pascal.taie.language.type.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Util {
+class Util {
      static int constArraySize(Obj obj) {
         var alloc = obj.getAllocation();
         if (!(alloc instanceof New newVar)) {
@@ -47,7 +47,7 @@ public class Util {
         return superClasses;
     }
 
-    static boolean typeUnknown(Type type) {
+    static boolean typeIsUnknown(Type type) {
          if (type instanceof ClassType classType) {
              return classType.getName().equals("UnknownClassName");
          }
