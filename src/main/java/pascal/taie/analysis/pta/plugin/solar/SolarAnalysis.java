@@ -10,12 +10,14 @@ public class SolarAnalysis implements Plugin {
     private PropagationModel propagationModel;
     private TransformationModel transformationModel;
     private CollectiveInferenceModel collectiveInferenceModel;
+    private LazyHeapModel lazyHeapModel;
 
     @Override
     public void setSolver(Solver solver) {
         this.propagationModel = new PropagationModel(solver);
         this.transformationModel = new TransformationModel(solver);
         this.collectiveInferenceModel = new CollectiveInferenceModel(solver);
+        this.lazyHeapModel = new LazyHeapModel(solver);
     }
 
     @Override
@@ -29,6 +31,9 @@ public class SolarAnalysis implements Plugin {
         if (collectiveInferenceModel.isRelevantVar(csVar.getVar())) {
             collectiveInferenceModel.handleNewPointsToSet(csVar, pts);
         }
+        if (lazyHeapModel.isRelevantVar(csVar.getVar())) {
+            lazyHeapModel.handleNewPointsToSet(csVar, pts);
+        }
     }
 
     @Override
@@ -37,6 +42,7 @@ public class SolarAnalysis implements Plugin {
             propagationModel.handleNewInvoke(invoke);
             transformationModel.handleNewInvoke(invoke);
             collectiveInferenceModel.handleNewInvoke(invoke);
+            lazyHeapModel.handleNewInvoke(invoke);
         });
     }
 }

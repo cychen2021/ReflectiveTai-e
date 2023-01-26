@@ -1,12 +1,11 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
+import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.heap.Obj;
 import pascal.taie.ir.exp.IntLiteral;
 import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.stmt.New;
 import pascal.taie.language.classes.JClass;
-import pascal.taie.language.type.ClassType;
-import pascal.taie.language.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,10 +46,10 @@ class Util {
         return superClasses;
     }
 
-    static boolean typeIsUnknown(Type type) {
-         if (type instanceof ClassType classType) {
-             return classType.getName().equals("UnknownClassName");
+    static boolean isLazyObjUnknownType(CSObj obj) {
+         if (obj.getObject().getAllocation() instanceof LazyObj lazy) {
+             return lazy.equals(LazyObj.TYPE_UNKNOWN);
          }
-         return false;
+         return true;
     }
 }

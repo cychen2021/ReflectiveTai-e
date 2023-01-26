@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 import static pascal.taie.analysis.pta.plugin.solar.Util.constArraySize;
+import static pascal.taie.analysis.pta.plugin.solar.Util.isLazyObjUnknownType;
 
 public class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
@@ -69,10 +70,19 @@ public class TransformationModel extends AbstractModel {
                 }
             } else {
                 for (var receiveObj: receiveObjs) {
-                    Type receiveType = receiveObj.getObject().getType();
-                    if (isConcerned(receiveType)) {
-                        for (MethodRef methodRef: methodRefs) {
-                            JMethod callee = hierarchy.dispatch(receiveType, methodRef);
+                    if (!isLazyObjUnknownType(receiveObj)) {
+                        Type receiveType = receiveObj.getObject().getType();
+                        if (isConcerned(receiveType)) {
+                            for (MethodRef methodRef : methodRefs) {
+                                JMethod callee = hierarchy.dispatch(receiveType, methodRef);
+                                if (callee != null) {
+                                    methods.add(callee);
+                                }
+                            }
+                        }
+                    } else {
+                        for (MethodRef methodRef : methodRefs) {
+                            JMethod callee = methodRef.resolve();
                             if (callee != null) {
                                 methods.add(callee);
                             }
