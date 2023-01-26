@@ -12,7 +12,6 @@ import javax.annotation.Nullable;
 
 import static pascal.taie.language.classes.ClassNames.METHOD;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +28,14 @@ public class MethodMetaObj {
 
     public List<Type> getParameterTypes() {
         return parameterTypes;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public Type getReturnType() {
+        return returnType;
     }
 
     public boolean isKnown() {

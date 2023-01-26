@@ -11,10 +11,16 @@ import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.InvokeInstanceExp;
 import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.ir.stmt.Invoke;
+import pascal.taie.language.classes.ClassHierarchy;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
+import pascal.taie.language.type.ArrayType;
+import pascal.taie.language.type.ClassType;
+import pascal.taie.language.type.PrimitiveType;
 import pascal.taie.language.type.Type;
+import pascal.taie.language.type.TypeSystem;
 
 class CollectiveInferenceModel extends AbstractModel {
 
@@ -51,21 +57,23 @@ class CollectiveInferenceModel extends AbstractModel {
         Context context = csVar.getContext();
 
         mtdObjs.forEach(mtdObj -> {
-            if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
-                return;
-            }
-            boolean mtdSigKnown = methodMetaObj.methodNameKnown() && methodMetaObj.returnTypeKnown()
-                    && methodMetaObj.parameterTypesKnown();
-            if (!methodMetaObj.baseClassKnown()) {
-                solver.addVarPointsTo(context, m, invTp(recvObjs));
-                if (mtdSigKnown) { // TODO pt(y) is not checked
-                    // validate the method signature inside this sub-function
-                    solver.addVarPointsTo(context, m, invS2T(mtdObjs, argObjs, A));
-                }
-            }
+            if (mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj) {
 
-            if (!mtdSigKnown) {
-                solver.addVarPointsTo(context, m, invSig(argObjs, A));
+                boolean mtdSigKnown = methodMetaObj.methodNameKnown() && methodMetaObj.returnTypeKnown()
+                        && methodMetaObj.parameterTypesKnown();
+
+                if (!methodMetaObj.baseClassKnown()) {
+                    solver.addVarPointsTo(context, m, invTp(recvObjs));
+
+                    if (mtdSigKnown) { // TODO pt(y) is not checked
+                        // validate the method signature inside this sub-function
+                        solver.addVarPointsTo(context, m, invS2T(methodMetaObj));
+                    }
+                }
+
+                if (!mtdSigKnown) {
+                    solver.addVarPointsTo(context, m, invSig(argObjs, A));
+                }
             }
         });
     }
@@ -106,8 +114,12 @@ class CollectiveInferenceModel extends AbstractModel {
     private PointsToSet invSig(PointsToSet argObjs, Type resultType) {
         PointsToSet result = solver.makePointsToSet();
 
-        for (CSObj argObj : argObjs) {
-            // TODO
+        for (List<Type> paramTypes : parameterTypesEnumeration(argObjs)) {
+            for (Type returnType : findReturnTypes(resultType)) {
+                MethodMetaObj methodMetaObj = MethodMetaObj.unknown(null, null, paramTypes, returnType);
+                Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, methodMetaObj, MethodMetaObj.TYPE);
+                result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
+            }
         }
 
         return result;
@@ -116,28 +128,62 @@ class CollectiveInferenceModel extends AbstractModel {
     /**
      * I-InvS2T: use a method signature to infer the class type of a method
      *
-     * @param mtdObjs    points-to set of the method object `m` in `x = (A)
-     *                   m.invoke(y, args)`
-     * @param argObjs    `args`
-     * @param resultType A
+     * @param methodMetaObj signature and parent class of a method
      * @return new objects pointed to by `m`
      */
-    private PointsToSet invS2T(PointsToSet mtdObjs, PointsToSet argObjs, Type resultType) {
+    private PointsToSet invS2T(MethodMetaObj methodMetaObj) {
         PointsToSet result = solver.makePointsToSet();
-        // TODO
+
+        for (JClass jClass : findClassByMethodSignature(methodMetaObj)) {
+            MethodMetaObj m = MethodMetaObj.unknown(jClass, methodMetaObj.getMethodName(),
+                    methodMetaObj.getParameterTypes(), methodMetaObj.getReturnType());
+            Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, m, MethodMetaObj.TYPE);
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
+        }
         return result;
     }
 
-    private boolean parameterTypesValidation(MethodMetaObj methodMetaObj, PointsToSet argArray) {
+    private boolean parameterTypesValidation(MethodMetaObj methodMetaObj, PointsToSet argObjs) {
         boolean result = false;
         List<Type> parameterTypes = methodMetaObj.getParameterTypes();
         // TODO
         return result;
     }
 
+    private List<List<Type>> parameterTypesEnumeration(PointsToSet argObjs) {
+        List<List<Type>> result = List.of();
+        // TODO
+        return result;
+    }
+
     private List<JClass> findClassByMethodSignature(MethodMetaObj metaObj) {
         List<JClass> result = List.of();
-        // TODO
+        for (MethodRef method : metaObj.search()) {
+            result.add(method.getDeclaringClass());
+        }
+        return result;
+    }
+
+    private List<Type> findReturnTypes(Type A) {
+        List<Type> result = List.of();
+        ClassHierarchy classHierarchy = solver.getHierarchy();
+        TypeSystem typeSystem = solver.getTypeSystem();
+
+        if (A instanceof ClassType classType) {
+            JClass jClass = classType.getJClass();
+
+            // add A's subclasses (including A itself)
+            for (JClass subclass : classHierarchy.getAllSubclassesOf(jClass)) {
+                result.add(typeSystem.getClassType(subclass.getName()));
+            }
+            // add parent classes of A (except Object)
+            classHierarchy.allClasses().filter(c -> classHierarchy.isSubclass(jClass, c))
+                    .filter(c -> !(c.getSimpleName() == "Object"))
+                    .forEach(c -> result.add(typeSystem.getClassType(c.getName())));
+
+        } else if (A instanceof PrimitiveType primitiveType) {
+            result.add(typeSystem.getBoxedType(primitiveType));
+        }
         return result;
     }
 }
