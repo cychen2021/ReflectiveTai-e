@@ -50,6 +50,6 @@ class Util {
          if (obj.getObject().getAllocation() instanceof LazyObj lazy) {
              return lazy.equals(LazyObj.TYPE_UNKNOWN);
          }
-         return true;
+         return false;
     }
 }
