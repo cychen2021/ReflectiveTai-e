@@ -45,6 +45,7 @@ import pascal.taie.analysis.pta.plugin.invokedynamic.InvokeDynamicAnalysis;
 import pascal.taie.analysis.pta.plugin.invokedynamic.LambdaAnalysis;
 import pascal.taie.analysis.pta.plugin.natives.NativeModeller;
 import pascal.taie.analysis.pta.plugin.reflection.ReflectionAnalysis;
+import pascal.taie.analysis.pta.plugin.solar.SolarAnalysis;
 import pascal.taie.analysis.pta.plugin.taint.TaintAnalysis;
 import pascal.taie.analysis.pta.toolkit.CollectionMethods;
 import pascal.taie.analysis.pta.toolkit.mahjong.Mahjong;
@@ -121,6 +122,20 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
 
     private static void setPlugin(Solver solver, AnalysisOptions options) {
         CompositePlugin plugin = new CompositePlugin();
+        Plugin reflectionAnalysis;
+        if (!options.has("builtin-reflection-analysis")) {
+            reflectionAnalysis = new ReflectionAnalysis();
+        } else {
+            String reflectionAnalysisName = options.getString("reflection-analysis");
+            if (reflectionAnalysisName.equals("basic")) {
+                reflectionAnalysis = new ReflectionAnalysis();
+            } else if (reflectionAnalysisName.equals("solar")) {
+                reflectionAnalysis = new SolarAnalysis();
+            } else {
+                throw new IllegalArgumentException(
+                        "Illegal builtin reflection analysis name: " + reflectionAnalysisName);
+            }
+        }
         // add builtin plugins
         // To record elapsed time precisely, AnalysisTimer should be added at first.
         plugin.addPlugin(
@@ -130,7 +145,7 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
                 new ThreadHandler(),
                 new NativeModeller(),
                 new ExceptionAnalysis(),
-                new ReflectionAnalysis()
+                reflectionAnalysis
         );
         if (World.get().getOptions().getJavaVersion() < 9) {
             // current reference handler doesn't support Java 9+
