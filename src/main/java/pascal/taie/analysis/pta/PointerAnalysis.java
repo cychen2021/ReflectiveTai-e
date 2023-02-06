@@ -126,7 +126,7 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
         if (!options.has("builtin-reflection-analysis")) {
             reflectionAnalysis = new ReflectionAnalysis();
         } else {
-            String reflectionAnalysisName = options.getString("reflection-analysis");
+            String reflectionAnalysisName = options.getString("builtin-reflection-analysis");
             if (reflectionAnalysisName.equals("basic")) {
                 reflectionAnalysis = new ReflectionAnalysis();
             } else if (reflectionAnalysisName.equals("solar")) {
