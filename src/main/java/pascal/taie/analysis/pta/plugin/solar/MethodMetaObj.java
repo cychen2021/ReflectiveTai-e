@@ -10,6 +10,7 @@ import pascal.taie.language.type.Type;
 import javax.annotation.Nullable;
 
 import static pascal.taie.language.classes.ClassNames.METHOD;
+import static pascal.taie.analysis.pta.plugin.solar.Util.*;
 
 import java.util.*;
 
@@ -106,16 +107,7 @@ public class MethodMetaObj {
                 var parameterTypes = getParameterTypes();
                 if (parameterTypes != null) {
                     var mParameters = m.getParamTypes();
-                    if (mParameters.size() != parameterTypes.size()) {
-                        parameterMatched = false;
-                    } else {
-                        for (int i = 0; i < mParameters.size(); i++) {
-                            if (!mParameters.get(i).equals(parameterTypes.get(i))) {
-                                parameterMatched = false;
-                                break;
-                            }
-                        }
-                    }
+                    parameterMatched = paramTypesFit(World.get().getTypeSystem(), mParameters, parameterTypes);
                 }
                 return returnMatched && nameMatched && parameterMatched;
             }).map(JMethod::getRef).toList();

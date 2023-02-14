@@ -6,6 +6,8 @@ import pascal.taie.ir.exp.IntLiteral;
 import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.stmt.New;
 import pascal.taie.language.classes.JClass;
+import pascal.taie.language.type.Type;
+import pascal.taie.language.type.TypeSystem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,5 +53,16 @@ class Util {
              return lazy.equals(LazyObj.TYPE_UNKNOWN);
          }
          return false;
+    }
+    static boolean paramTypesFit(TypeSystem typeSystem, List<Type> mtdParamTypes, List<Type> givenParamTypes) {
+        if (mtdParamTypes.size() != givenParamTypes.size()) {
+            return false;
+        }
+        for (int i = 0; i < mtdParamTypes.size(); i++) {
+            if (!typeSystem.isSubtype(mtdParamTypes.get(i), givenParamTypes.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }

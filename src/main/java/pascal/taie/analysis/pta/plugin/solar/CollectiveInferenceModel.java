@@ -20,6 +20,7 @@ import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.PrimitiveType;
 import pascal.taie.language.type.Type;
 import pascal.taie.language.type.VoidType;
+import pascal.taie.util.collection.Pair;
 
 import javax.annotation.Nullable;
 
@@ -176,23 +177,31 @@ class CollectiveInferenceModel extends AbstractModel {
             return result;
         }
 
-        var params = signature.paramTypes();
-        if (params != null) {
-            var ptp = findArgTypes(argObjs);
-            if (ptp != null && !ptp.contains(params)) {
-                return result;
+        assert signature.paramTypes() == null;
+        List<SignatureRecord> possibleSigs = new ArrayList<>();
+        var ptp = findArgTypes(argObjs);
+        if (ptp != null) {
+            for (var paramTypes: ptp) {
+                possibleSigs.add(SignatureRecord.of(signature.methodName(), paramTypes, returnType));
             }
         }
 
-        var possibleClasses = findClassByMethodSignature(signature.returnType(),
-                signature.methodName(), signature.paramTypes());
+        List<Pair<SignatureRecord, List<JClass>>> possibleClasses = new ArrayList<>();
+        for (var sig: possibleSigs) {
+            possibleClasses.add(
+                    new Pair<>(sig, findClassByMethodSignature(sig.returnType(), sig.methodName(),
+                            sig.paramTypes()))
+            );
+        }
 
-        for (var possibleClass: possibleClasses) {
-            result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                    MethodMetaObj.DESC,
-                    MethodMetaObj.of(possibleClass, signature),
-                    MethodMetaObj.TYPE
-            )));
+        for (var possibleSigAndClasses: possibleClasses) {
+            for (var possibleClass: possibleSigAndClasses.second()) {
+                result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                        MethodMetaObj.DESC,
+                        MethodMetaObj.of(possibleClass, possibleSigAndClasses.first()),
+                        MethodMetaObj.TYPE
+                )));
+            }
         }
         return result;
     }
@@ -249,14 +258,7 @@ class CollectiveInferenceModel extends AbstractModel {
                     if (method.getParamTypes().size() != paramTypes.size()) {
                         continue;
                     }
-                    boolean match = true;
-                    for (int i = 0; i < paramTypes.size(); i++) {
-                        if (!method.getParamTypes().get(i).equals(paramTypes.get(i))) {
-                            match = false;
-                            break;
-                        }
-                    }
-                    if (match) {
+                    if (paramTypesFit(typeSystem, method.getParamTypes(), paramTypes)) {
                         return true;
                     }
                 } else {
