@@ -4,6 +4,7 @@ import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.Plugin;
 import pascal.taie.analysis.pta.pts.PointsToSet;
+import pascal.taie.ir.stmt.Cast;
 import pascal.taie.language.classes.JMethod;
 
 public class SolarAnalysis implements Plugin {
@@ -43,6 +44,11 @@ public class SolarAnalysis implements Plugin {
             transformationModel.handleNewInvoke(invoke);
             collectiveInferenceModel.handleNewInvoke(invoke);
             lazyHeapModel.handleNewInvoke(invoke);
+        });
+        method.getIR().stmts().forEach(stmt -> {
+            if (stmt instanceof Cast cast) {
+                lazyHeapModel.handleNewCast(cast);
+            }
         });
     }
 }

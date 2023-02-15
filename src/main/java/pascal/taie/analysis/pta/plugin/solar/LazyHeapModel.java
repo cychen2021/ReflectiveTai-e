@@ -10,10 +10,30 @@ import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
+import pascal.taie.ir.exp.CastExp;
+import pascal.taie.ir.stmt.Cast;
+import pascal.taie.util.TriConsumer;
+import pascal.taie.util.collection.Maps;
+import pascal.taie.util.collection.MultiMap;
+import pascal.taie.language.type.Type;
+import pascal.taie.util.collection.Sets;
+
+import java.util.Set;
 
 class LazyHeapModel extends AbstractModel {
-    protected LazyHeapModel(Solver solver) {
+    protected final MultiMap<Var, Cast> castRelevantVars = Maps.newMultiMap(Maps.newHybridMap());
+
+    protected final Set<TriConsumer<CSVar, PointsToSet, Cast>> castHandlers
+            = Sets.newHybridSet();
+
+    public final Type LAZY_OBJ_UNKNOWN_TYPE
+            = hierarchy.getClass("java.lang.Object").getType();
+
+    public final String LAZY_OBJ_DESC = "LazyObj";
+
+    LazyHeapModel(Solver solver) {
         super(solver);
+        registerCastHandlers();
     }
 
     @Override
@@ -21,6 +41,10 @@ class LazyHeapModel extends AbstractModel {
         JMethod classNewInstance = hierarchy.getJREMethod("<java.lang.Class: java.lang.Object newInstance()>");
         registerRelevantVarIndexes(classNewInstance, BASE);
         registerAPIHandler(classNewInstance, this::classNewInstance);
+    }
+
+    protected void registerCastHandlers() {
+        castHandlers.add(this::castHandler);
     }
 
     private void classNewInstance(CSVar csVar, PointsToSet pts, Invoke invoke) {
@@ -34,14 +58,55 @@ class LazyHeapModel extends AbstractModel {
             }
             CSObj csObj;
             if (classMetaObj.isKnown()) {
-                Obj obj = heapModel.getMockObj("LazyObj", LazyObj.TYPE_KNOWN,
+                Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
                         classMetaObj.getJClass().getType());
                 csObj = csManager.getCSObj(context, obj);
             } else {
-                Obj obj = heapModel.getMockObj("LazyObj", LazyObj.TYPE_UNKNOWN, hierarchy.getClass("java.lang.Object").getType());
+                Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_UNKNOWN, LAZY_OBJ_UNKNOWN_TYPE);
                 csObj = csManager.getCSObj(context, obj);
             }
             solver.addVarPointsTo(context, result, csObj);
         });
+    }
+
+    private void castHandler(CSVar csVar, PointsToSet pts, Cast cast) {
+        CastExp exp = cast.getRValue();
+        assert csVar.getVar().equals(exp.getValue());
+        Var target = cast.getLValue();
+        Type castType = exp.getCastType();
+        Context context = csVar.getContext();
+
+        pts.forEach(srcObj -> {
+            if (srcObj.getObject().getAllocation() instanceof LazyObj lazyObj) {
+                if (lazyObj == LazyObj.TYPE_UNKNOWN) {
+                    Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN, castType);
+                    CSObj csObj = csManager.getCSObj(context, obj);
+                    solver.addVarPointsTo(context, target, csObj);
+                }
+            }
+        });
+    }
+
+    public void handleNewCast(Cast cast) {
+        CastExp exp = cast.getRValue();
+        Type castType = exp.getCastType();
+        if (castType.equals(LAZY_OBJ_UNKNOWN_TYPE)) {
+            return;
+        }
+        Var source = exp.getValue();
+        castRelevantVars.put(source, cast);
+    }
+
+    @Override
+    public void handleNewPointsToSet(CSVar csVar, PointsToSet pts) {
+        super.handleNewPointsToSet(csVar, pts);
+        castRelevantVars.get(csVar.getVar()).forEach(cast -> {
+            castHandlers.forEach(handler -> handler.accept(csVar, pts, cast));
+        });
+    }
+
+    @Override
+    public boolean isRelevantVar(Var var) {
+        return super.isRelevantVar(var) || castRelevantVars.containsKey(var);
     }
 }
