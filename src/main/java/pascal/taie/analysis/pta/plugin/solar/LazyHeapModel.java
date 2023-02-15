@@ -11,7 +11,7 @@ import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
 
-public class LazyHeapModel extends AbstractModel {
+class LazyHeapModel extends AbstractModel {
     protected LazyHeapModel(Solver solver) {
         super(solver);
     }

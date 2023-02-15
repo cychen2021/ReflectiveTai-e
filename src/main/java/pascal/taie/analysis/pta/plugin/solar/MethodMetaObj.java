@@ -14,7 +14,7 @@ import static pascal.taie.analysis.pta.plugin.solar.Util.*;
 
 import java.util.*;
 
-public class MethodMetaObj {
+class MethodMetaObj {
     record SignatureRecord(String methodName, List<Type> paramTypes, Type returnType) {
         @Override
         public boolean equals(Object o) {

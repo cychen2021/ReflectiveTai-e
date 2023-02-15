@@ -26,7 +26,7 @@ import java.util.Set;
 import static pascal.taie.analysis.pta.plugin.solar.Util.constArraySize;
 import static pascal.taie.analysis.pta.plugin.solar.Util.isLazyObjUnknownType;
 
-public class TransformationModel extends AbstractModel {
+class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
 
     protected TransformationModel(Solver solver) {

@@ -18,7 +18,7 @@ import static pascal.taie.analysis.pta.plugin.solar.MethodMetaObj.SignatureRecor
 
 import java.util.List;
 
-public class PropagationModel extends AbstractModel {
+class PropagationModel extends AbstractModel {
     PropagationModel(Solver solver) {
         super(solver);
     }

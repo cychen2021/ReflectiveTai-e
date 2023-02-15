@@ -10,7 +10,7 @@ import static pascal.taie.language.classes.ClassNames.CLASS;
 import javax.annotation.Nullable;
 import java.util.Objects;
 
-public class ClassMetaObj {
+class ClassMetaObj {
     private final JClass knownClass;
 
     private static final ClassMetaObj UNKNOWN = new ClassMetaObj(null);
