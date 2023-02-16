@@ -4,8 +4,6 @@ import pascal.taie.analysis.graph.callgraph.CallKind;
 import pascal.taie.analysis.graph.callgraph.Edge;
 import pascal.taie.analysis.pta.core.cs.context.Context;
 import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
-import pascal.taie.analysis.pta.core.cs.element.CSCallSite;
-import pascal.taie.analysis.pta.core.cs.element.CSMethod;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
 import pascal.taie.analysis.pta.core.solver.Solver;
@@ -18,8 +16,6 @@ import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.NullType;
 import pascal.taie.language.type.Type;
-import pascal.taie.util.collection.Maps;
-import pascal.taie.util.collection.MultiMap;
 
 import java.util.*;
 

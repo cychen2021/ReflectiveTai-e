@@ -1,7 +1,5 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
-import pascal.taie.analysis.pta.core.cs.context.Context;
-import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.Plugin;
