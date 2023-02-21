@@ -14,8 +14,6 @@ import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
 
-import static pascal.taie.analysis.pta.plugin.solar.MethodMetaObj.SignatureRecord;
-
 import java.util.List;
 
 class PropagationModel extends AbstractModel {
@@ -41,6 +39,34 @@ class PropagationModel extends AbstractModel {
         JMethod classGetMethods = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Method[] getMethods()>");
         registerRelevantVarIndexes(classGetMethods, BASE);
         registerAPIHandler(classGetMethods, this::classGetMethods);
+
+        JMethod classGetField = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Field getField(java.lang.String)>");
+        registerRelevantVarIndexes(classGetField, BASE, 0);
+        registerAPIHandler(classGetField, this::classGetField);
+    }
+
+    private void classGetField(CSVar csVar, PointsToSet pts, Invoke invoke) {
+        Context context = csVar.getContext();
+        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0);
+        PointsToSet baseClsObjs = args.get(0);
+        PointsToSet fNameObjs = args.get(1);
+        fNameObjs.forEach(fNameObj -> {
+            baseClsObjs.forEach(baseClsObj -> {
+                String fName = CSObjs.toString(fNameObj);
+                JClass baseCls = CSObjs.toClass(baseClsObj);
+                if (baseCls == null) {
+                    ClassMetaObj clsMetaObj = (ClassMetaObj) baseClsObj.getObject().getAllocation();
+                    baseCls = clsMetaObj.getJClass();
+                }
+
+                FieldMetaObj metaObj = FieldMetaObj.of(baseCls,FieldMetaObj.SignatureRecord.of(fName, null));
+
+                Obj fldObj = heapModel.getMockObj(FieldMetaObj.DESC, metaObj, FieldMetaObj.TYPE);
+                CSObj csObj = csManager.getCSObj(defaultHctx, fldObj);
+                Var result = invoke.getResult();
+                solver.addVarPointsTo(context, result, csObj);
+            });
+        });
     }
 
     private void classForName(CSVar csVar, PointsToSet pts, Invoke invoke) {
@@ -84,7 +110,7 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                MethodMetaObj metaObj = MethodMetaObj.of(baseCls, SignatureRecord.of(mName, null, null));
+                MethodMetaObj metaObj = MethodMetaObj.of(baseCls, MethodMetaObj.SignatureRecord.of(mName, null, null));
 
                 Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj, MethodMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
