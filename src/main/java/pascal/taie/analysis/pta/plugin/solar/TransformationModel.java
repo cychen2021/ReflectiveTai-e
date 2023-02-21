@@ -4,6 +4,8 @@ import pascal.taie.analysis.graph.callgraph.CallKind;
 import pascal.taie.analysis.graph.callgraph.Edge;
 import pascal.taie.analysis.pta.core.cs.context.Context;
 import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
+import pascal.taie.analysis.pta.core.cs.element.CSCallSite;
+import pascal.taie.analysis.pta.core.cs.element.CSMethod;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
 import pascal.taie.analysis.pta.core.solver.Solver;
@@ -16,6 +18,7 @@ import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.NullType;
 import pascal.taie.language.type.Type;
+import pascal.taie.util.collection.Pair;
 
 import java.util.*;
 
@@ -32,6 +35,30 @@ class TransformationModel extends AbstractModel {
         registerRelevantVarIndexes(methodInvoke, BASE, 1);
         registerAPIHandler(methodInvoke, this::methodInvoke);
     }
+
+    public void watchFreshArgs(CSVar csVar, PointsToSet pts) {
+        List<Integer> toRemove = new ArrayList<>();
+        outer: for (int i = 0; i < pendingInvokes.size(); i++) {
+            var pair = pendingInvokes.get(i);
+            var relevantVars = pair.first();
+            if (relevantVars.contains(csVar)) {
+                for (var arg: relevantVars) {
+                    var argPts = solver.getPointsToSetOf(arg);
+                    if (argPts == null || argPts.isEmpty()) {
+                        continue outer;
+                    }
+                }
+                var edge = pair.second();
+                solver.addCallEdge(edge);
+                toRemove.add(i);
+            }
+        }
+        for (var idx: toRemove) {
+            pendingInvokes.remove(idx.intValue());
+        }
+    }
+
+    private List<Pair<Set<CSVar>, Edge<CSCallSite, CSMethod>>> pendingInvokes = new ArrayList<>();
 
     private void methodInvoke(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
@@ -79,7 +106,7 @@ class TransformationModel extends AbstractModel {
                 for (Type paramType : declaredParamTypes) {
                     freshArgs.add(
                             new Var(invoke.getContainer(),
-                                    "%solar-param-" + freshVarCounter++,
+                                    "%solar-transformation-fresh-arg-" + freshVarCounter++,
                                     paramType, -1)
                     );
                 }
@@ -97,7 +124,7 @@ class TransformationModel extends AbstractModel {
                         new InvokeVirtual(callee.getRef(), receiveVar, freshArgs));
                 var mockCallSite = csManager.getCSCallSite(context, mockInvoke);
                 var csCallee = csManager.getCSMethod(context, callee);
-                solver.addCallEdge(new Edge<>(CallKind.VIRTUAL, mockCallSite, csCallee));
+                pendingInvokes.add(new Pair<>(new HashSet<>(csFreshArgs), new Edge<>(CallKind.VIRTUAL, mockCallSite, csCallee)));
             }
         });
     }

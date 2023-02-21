@@ -36,6 +36,7 @@ public class SolarAnalysis implements Plugin {
         if (transformationModel.isRelevantVar(csVar.getVar())) {
             transformationModel.handleNewPointsToSet(csVar, pts);
         }
+        transformationModel.watchFreshArgs(csVar, pts);
     }
 
     @Override
