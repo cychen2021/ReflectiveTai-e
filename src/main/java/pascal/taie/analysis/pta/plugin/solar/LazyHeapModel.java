@@ -46,6 +46,47 @@ class LazyHeapModel extends AbstractModel {
                 "<java.lang.reflect.Method: java.lang.Object invoke(java.lang.Object,java.lang.Object[])>");
         registerRelevantVarIndexes(methodInvoke, BASE, 0);
         registerAPIHandler(methodInvoke, this::methodInvoke);
+
+        JMethod fieldGet = hierarchy.getJREMethod(
+                "<java.lang.reflect.Field: java.lang.Object get(java.lang.Object)>");
+        registerRelevantVarIndexes(fieldGet, BASE, 0);
+        registerAPIHandler(fieldGet, this::fieldAccess);
+
+        JMethod fieldSet = hierarchy.getJREMethod(
+                "<java.lang.reflect.Field: void set(java.lang.Object,java.lang.Object)>");
+        registerRelevantVarIndexes(fieldSet, BASE, 0);
+        registerAPIHandler(fieldSet, this::fieldAccess);
+    }
+
+    private void fieldAccess(CSVar csVar, PointsToSet pointsToSet, Invoke invoke) {
+        var args = getArgs(csVar, pointsToSet, invoke, BASE, 0);
+        var baseObjs = args.get(0);
+        var argObjs = args.get(1);
+        if (argObjs.objects().noneMatch(argObj -> {
+            if (argObj.getObject().getAllocation() instanceof LazyObj lazyObj) {
+                return lazyObj == LazyObj.TYPE_UNKNOWN;
+            }
+            return false;
+        })) {
+            return;
+        }
+        Var firstArg = invoke.getInvokeExp().getArg(0);
+        Context context = csVar.getContext();
+        baseObjs.forEach(baseObj -> {
+            if (baseObj.getObject().getAllocation() instanceof FieldMetaObj metaObj) {
+                if (metaObj.baseClassIsKnown()) {
+                    var baseClass = metaObj.getBaseClass();
+                    var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
+                    possibleClasses.addAll(Util.superClassesOf(baseClass));
+                    for (var possibleClass: possibleClasses) {
+                        Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
+                                possibleClass.getType());
+                        CSObj csObj = csManager.getCSObj(context, obj);
+                        solver.addVarPointsTo(context, firstArg, csObj);
+                    }
+                }
+            }
+        });
     }
 
     private void methodInvoke(CSVar csVar, PointsToSet pointsToSet, Invoke invoke) {

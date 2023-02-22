@@ -31,6 +31,7 @@ import java.util.*;
 
 class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
+    private final List<Pair<Set<CSVar>, Edge<CSCallSite, CSMethod>>> pendingInvokes = new ArrayList<>();
 
     protected TransformationModel(Solver solver) {
         super(solver);
@@ -140,7 +141,7 @@ class TransformationModel extends AbstractModel {
             var relevantVars = pair.first();
             if (relevantVars.contains(csVar)) {
                 for (var arg: relevantVars) {
-                    var argPts = solver.getPointsToSetOf(arg);
+                    var argPts = arg == csVar ? pts : solver.getPointsToSetOf(arg);
                     if (argPts == null || argPts.isEmpty()) {
                         continue outer;
                     }
@@ -154,8 +155,6 @@ class TransformationModel extends AbstractModel {
             pendingInvokes.remove(idx.intValue());
         }
     }
-
-    private final List<Pair<Set<CSVar>, Edge<CSCallSite, CSMethod>>> pendingInvokes = new ArrayList<>();
 
     private void methodInvoke(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
