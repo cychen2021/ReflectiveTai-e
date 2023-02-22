@@ -129,4 +129,12 @@ class MethodMetaObj {
     public int hashCode() {
         return Objects.hash(baseClass, signature);
     }
+
+    @Override
+    public String toString() {
+        return "MethodMetaObj{" +
+                "baseClass=" + baseClass +
+                ", signature=" + signature +
+                '}';
+    }
 }

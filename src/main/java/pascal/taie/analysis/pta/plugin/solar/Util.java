@@ -6,6 +6,8 @@ import pascal.taie.ir.exp.IntLiteral;
 import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.stmt.New;
 import pascal.taie.language.classes.JClass;
+import pascal.taie.language.type.ArrayType;
+import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.Type;
 import pascal.taie.language.type.TypeSystem;
 
@@ -64,5 +66,12 @@ class Util {
             }
         }
         return true;
+    }
+
+    /**
+     * TODO: merge with DefaultSolver.isConcerned(Exp)
+     */
+    public static boolean isConcerned(Type type) {
+        return type instanceof ClassType || type instanceof ArrayType;
     }
 }

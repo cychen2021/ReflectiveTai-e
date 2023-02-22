@@ -12,6 +12,7 @@ import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.ir.exp.CastExp;
 import pascal.taie.ir.stmt.Cast;
+import pascal.taie.language.type.ClassType;
 import pascal.taie.util.TriConsumer;
 import pascal.taie.util.collection.Maps;
 import pascal.taie.util.collection.MultiMap;
@@ -26,13 +27,13 @@ class LazyHeapModel extends AbstractModel {
     protected final Set<TriConsumer<CSVar, PointsToSet, Cast>> castHandlers
             = Sets.newHybridSet();
 
-    public final Type LAZY_OBJ_UNKNOWN_TYPE
-            = hierarchy.getClass("java.lang.Object").getType();
-
     public final String LAZY_OBJ_DESC = "LazyObj";
 
-    LazyHeapModel(Solver solver) {
+    private final Type LAZY_OBJ_UNKNOWN_TYPE;
+
+    LazyHeapModel(Solver solver, Type lazyObjUnknownType) {
         super(solver);
+        this.LAZY_OBJ_UNKNOWN_TYPE = lazyObjUnknownType;
         registerCastHandlers();
     }
 
@@ -78,6 +79,7 @@ class LazyHeapModel extends AbstractModel {
                     var baseClass = metaObj.getBaseClass();
                     var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
                     possibleClasses.addAll(Util.superClassesOf(baseClass));
+                    possibleClasses.remove(((ClassType) LAZY_OBJ_UNKNOWN_TYPE).getJClass());
                     for (var possibleClass: possibleClasses) {
                         Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
                                 possibleClass.getType());
@@ -109,6 +111,7 @@ class LazyHeapModel extends AbstractModel {
                     var baseClass = metaObj.getBaseClass();
                     var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
                     possibleClasses.addAll(Util.superClassesOf(baseClass));
+                    possibleClasses.remove(((ClassType) LAZY_OBJ_UNKNOWN_TYPE).getJClass());
                     for (var possibleClass: possibleClasses) {
                         Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
                                 possibleClass.getType());

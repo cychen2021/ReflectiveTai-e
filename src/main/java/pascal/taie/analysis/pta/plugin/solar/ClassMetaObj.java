@@ -54,4 +54,11 @@ class ClassMetaObj {
     public int hashCode() {
         return Objects.hash(knownClass);
     }
+
+    @Override
+    public String toString() {
+        return "ClassMetaObj{" +
+                "knownClass=" + knownClass +
+                '}';
+    }
 }

@@ -59,7 +59,7 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                FieldMetaObj metaObj = FieldMetaObj.of(baseCls,FieldMetaObj.SignatureRecord.of(fName, null));
+                FieldMetaObj metaObj = FieldMetaObj.of(baseCls, fName == null ? null : FieldMetaObj.SignatureRecord.of(fName, null));
 
                 Obj fldObj = heapModel.getMockObj(FieldMetaObj.DESC, metaObj, FieldMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, fldObj);
@@ -110,7 +110,7 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                MethodMetaObj metaObj = MethodMetaObj.of(baseCls, MethodMetaObj.SignatureRecord.of(mName, null, null));
+                MethodMetaObj metaObj = MethodMetaObj.of(baseCls, mName == null ? null : MethodMetaObj.SignatureRecord.of(mName, null, null));
 
                 Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj, MethodMetaObj.TYPE);
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);

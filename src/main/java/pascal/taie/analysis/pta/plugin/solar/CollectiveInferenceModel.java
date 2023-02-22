@@ -1,6 +1,7 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
 import java.util.*;
+import java.util.function.BiFunction;
 
 import com.sun.istack.NotNull;
 import pascal.taie.analysis.pta.core.cs.context.Context;
@@ -13,6 +14,7 @@ import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.InvokeInstanceExp;
 import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.stmt.Cast;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
@@ -20,17 +22,30 @@ import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.PrimitiveType;
 import pascal.taie.language.type.Type;
 import pascal.taie.language.type.VoidType;
+import pascal.taie.util.collection.Maps;
+import pascal.taie.util.collection.MultiMap;
 import pascal.taie.util.collection.Pair;
 
 import javax.annotation.Nullable;
 
 import static pascal.taie.analysis.pta.plugin.solar.Util.*;
-import static pascal.taie.analysis.pta.plugin.solar.MethodMetaObj.SignatureRecord;
 
 class CollectiveInferenceModel extends AbstractModel {
+    private final Type LAZY_OBJ_UNKNOWN_TYPE;
 
-    CollectiveInferenceModel(Solver solver) {
+    CollectiveInferenceModel(Solver solver, Type lazyObjUnknownType) {
         super(solver);
+        this.LAZY_OBJ_UNKNOWN_TYPE = lazyObjUnknownType;
+    }
+
+    private final MultiMap<Var, Type> castToTypes = Maps.newMultiMap();
+
+    public void handleNewCast(Cast cast) {
+        Type castType = cast.getRValue().getCastType();
+        if (Util.isConcerned(castType) && castType != LAZY_OBJ_UNKNOWN_TYPE) {
+            Var source = cast.getRValue().getValue();
+            castToTypes.put(source, castType);
+        }
     }
 
     @Override
@@ -40,6 +55,227 @@ class CollectiveInferenceModel extends AbstractModel {
                 "<java.lang.reflect.Method: java.lang.Object invoke(java.lang.Object,java.lang.Object[])>");
         registerRelevantVarIndexes(methodInvoke, BASE, 0, 1);
         registerAPIHandler(methodInvoke, this::methodInvoke);
+
+        JMethod fieldGet = hierarchy.getJREMethod(
+                "<java.lang.reflect.Field: java.lang.Object get(java.lang.Object)>");
+        registerRelevantVarIndexes(fieldGet, BASE, 0);
+        registerAPIHandler(fieldGet, this::fieldGet);
+
+        JMethod fieldSet = hierarchy.getJREMethod(
+                "<java.lang.reflect.Field: void set(java.lang.Object,java.lang.Object)>");
+        registerRelevantVarIndexes(fieldSet, BASE, 0, 1);
+        registerAPIHandler(fieldSet, this::fieldSet);
+    }
+
+    private void fieldSet(CSVar csVar, PointsToSet pts, Invoke invoke) {
+        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0, 1);
+
+        PointsToSet fldObjs = args.get(0); // m
+        PointsToSet recvObjs = args.get(1); // y
+        PointsToSet valueObjs = args.get(2); // x
+        InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
+        Var f = iExp.getBase();
+        Context context = csVar.getContext();
+
+        boolean recvObjContainsUnknown = recvObjs.objects()
+                .anyMatch(Util::isLazyObjUnknownType);
+
+        fldObjs.forEach(fldObj -> {
+            if (!(fldObj.getObject().getAllocation() instanceof FieldMetaObj fieldMetaObj)) {
+                return;
+            }
+            if (!fieldMetaObj.baseClassIsKnown()) {
+                solver.addVarPointsTo(context, f, setTp(fieldMetaObj.getSignature(), recvObjs));
+            }
+            if (!fieldMetaObj.signatureIsKnown()) {
+                solver.addVarPointsTo(context, f, setSig(fieldMetaObj.getBaseClass(), valueObjs));
+            }
+            if (!fieldMetaObj.baseClassIsKnown() && recvObjContainsUnknown
+                    && fieldMetaObj.getFieldName() != null) {
+                solver.addVarPointsTo(context, f, setS2T(fieldMetaObj.getSignature(), valueObjs));
+            }
+        });
+    }
+
+    private void fieldGet(CSVar csVar, PointsToSet pts, Invoke invoke) {
+        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0);
+
+        Var x = invoke.getLValue();
+        InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
+        Var f = iExp.getBase();
+        Set<Type> possibleA = castToTypes.get(x);
+        if (possibleA.isEmpty()) {
+            return;
+        }
+
+        PointsToSet fldObjs = args.get(0); // m
+        PointsToSet recvObjs = args.get(1); // y
+        Context context = csVar.getContext();
+
+        boolean recvObjContainsUnknown = recvObjs.objects()
+                .anyMatch(Util::isLazyObjUnknownType);
+
+        for (Type A: possibleA) {
+            fldObjs.forEach(fldObj -> {
+                if (!(fldObj.getObject().getAllocation() instanceof FieldMetaObj fieldMetaObj)) {
+                    return;
+                }
+                if (!fieldMetaObj.baseClassIsKnown()) {
+                    solver.addVarPointsTo(context, f, getTp(fieldMetaObj.getSignature(), recvObjs));
+                }
+                if (!fieldMetaObj.signatureIsKnown()) {
+                    solver.addVarPointsTo(context, f, getSig(fieldMetaObj.getBaseClass(), A));
+                }
+                if (!fieldMetaObj.baseClassIsKnown() && recvObjContainsUnknown
+                        && fieldMetaObj.getFieldName() != null) {
+                    solver.addVarPointsTo(context, f, getS2T(fieldMetaObj.getSignature(), A));
+                }
+            });
+        }
+    }
+
+    private PointsToSet setS2T(FieldMetaObj.SignatureRecord signature, PointsToSet valueObjs) {
+        PointsToSet result = solver.makePointsToSet();
+        if (signature.fieldName() == null) {
+            throw new RuntimeException("Unreachable");
+        }
+        for (CSObj valueObj: valueObjs) {
+            if (isLazyObjUnknownType(valueObj)) {
+                continue;
+            }
+            Type valueType = valueObj.getObject().getType();
+
+            List<JClass> possibleClasses =
+                    findClassesByFieldSignature(valueType, signature.fieldName(), (fieldType, valueType1) ->
+                            fieldType.equals(valueType1) || typeSystem.isSubtype(fieldType, valueType1)
+                    );
+            for (JClass possibleClass: possibleClasses) {
+                result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                        FieldMetaObj.DESC,
+                        FieldMetaObj.of(possibleClass, FieldMetaObj.SignatureRecord.of(signature.fieldName(), signature.fieldType())),
+                        FieldMetaObj.TYPE
+                )));
+            }
+        }
+        return result;
+    }
+
+    private PointsToSet setSig(JClass baseClass, PointsToSet valueObjs) {
+        PointsToSet result = solver.makePointsToSet();
+
+        List<Type> allPossibleReturnTypes = new ArrayList<>();
+
+        for (CSObj valueObj: valueObjs) {
+            if (isLazyObjUnknownType(valueObj)) {
+                continue;
+            }
+
+            Type valueType = valueObj.getObject().getType();
+
+            if (valueType == null) {
+                allPossibleReturnTypes.addAll(hierarchy.allClasses().map(JClass::getType).toList());
+                allPossibleReturnTypes.addAll(Arrays.stream(PrimitiveType.values()).toList());
+            } else if (!(valueType instanceof ClassType classType)) {
+                allPossibleReturnTypes.add(valueType);
+            } else {
+                allPossibleReturnTypes.addAll(superClassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
+                allPossibleReturnTypes.add(classType);
+            }
+
+            for (var possibleReturnType: allPossibleReturnTypes) {
+                result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                        FieldMetaObj.DESC,
+                        FieldMetaObj.of(baseClass, FieldMetaObj.SignatureRecord.of(null, possibleReturnType)),
+                        FieldMetaObj.TYPE
+                )));
+            }
+        }
+
+        return result;
+    }
+
+    private PointsToSet setTp(FieldMetaObj.SignatureRecord signature, PointsToSet recvObjs) {
+        PointsToSet result = solver.makePointsToSet();
+        for (CSObj recvObj: recvObjs) {
+            if (isLazyObjUnknownType(recvObj)) {
+                continue;
+            }
+            Type recvType = recvObj.getObject().getType();
+            if (!(recvType instanceof ClassType classType)) {
+                continue;
+            }
+            FieldMetaObj fieldMetaObj = FieldMetaObj.of(classType.getJClass(), signature);
+            Obj newMethodObj = heapModel.getMockObj(FieldMetaObj.DESC, fieldMetaObj,
+                    FieldMetaObj.TYPE);
+
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
+        }
+        return result;
+    }
+
+    private PointsToSet getS2T(FieldMetaObj.SignatureRecord signature, Type resultType) {
+        PointsToSet result = solver.makePointsToSet();
+        if (signature.fieldName() == null) {
+            throw new RuntimeException("Unreachable");
+        }
+
+        List<JClass> possibleClasses =
+                findClassesByFieldSignature(resultType, signature.fieldName(), (fieldType, valueType) ->
+                        fieldType.equals(valueType) || typeSystem.isSubtype(fieldType, valueType) || typeSystem.isSubtype(valueType, fieldType)
+                );
+        for (JClass possibleClass: possibleClasses) {
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                    FieldMetaObj.DESC,
+                    FieldMetaObj.of(possibleClass, FieldMetaObj.SignatureRecord.of(signature.fieldName(), signature.fieldType())),
+                    FieldMetaObj.TYPE
+            )));
+        }
+        return result;
+    }
+
+    private PointsToSet getSig(JClass baseClass, Type resultType) {
+        PointsToSet result = solver.makePointsToSet();
+
+        List<Type> allPossibleReturnTypes = new ArrayList<>();
+
+        if (resultType == null) {
+            allPossibleReturnTypes.addAll(hierarchy.allClasses().map(JClass::getType).toList());
+            allPossibleReturnTypes.addAll(Arrays.stream(PrimitiveType.values()).toList());
+        } else if (!(resultType instanceof ClassType classType)) {
+            allPossibleReturnTypes.add(resultType);
+        } else {
+            allPossibleReturnTypes.addAll(superClassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
+            allPossibleReturnTypes.addAll(hierarchy.getAllSubclassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
+        }
+
+        for (var possibleReturnType: allPossibleReturnTypes) {
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
+                    FieldMetaObj.DESC,
+                    FieldMetaObj.of(baseClass, FieldMetaObj.SignatureRecord.of(null, possibleReturnType)),
+                    FieldMetaObj.TYPE
+            )));
+        }
+
+        return result;
+    }
+
+    private PointsToSet getTp(FieldMetaObj.SignatureRecord signature, PointsToSet recvObjs) {
+        PointsToSet result = solver.makePointsToSet();
+        for (CSObj recvObj: recvObjs) {
+            if (isLazyObjUnknownType(recvObj)) {
+                continue;
+            }
+            Type recvType = recvObj.getObject().getType();
+            if (!(recvType instanceof ClassType classType)) {
+                continue;
+            }
+            FieldMetaObj fieldMetaObj = FieldMetaObj.of(classType.getJClass(), signature);
+            Obj newMethodObj = heapModel.getMockObj(FieldMetaObj.DESC, fieldMetaObj,
+                    FieldMetaObj.TYPE);
+
+            result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
+        }
+        return result;
     }
 
     private void methodInvoke(CSVar csVar, PointsToSet pts, Invoke invoke) {
@@ -49,11 +285,9 @@ class CollectiveInferenceModel extends AbstractModel {
         Var x = invoke.getLValue();
         InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
         Var m = iExp.getBase();
-        Type A;
-        if (x != null) {
-            A = x.getType();
-        } else {
-            A = null;
+        Set<Type> possibleA = castToTypes.get(x);
+        if (possibleA.isEmpty()) {
+            return;
         }
 
         PointsToSet mtdObjs = args.get(0); // m
@@ -64,21 +298,23 @@ class CollectiveInferenceModel extends AbstractModel {
         boolean recvObjContainsUnknown = recvObjs.objects()
                 .anyMatch(Util::isLazyObjUnknownType);
 
-        mtdObjs.forEach(mtdObj -> {
-            if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
-                return;
-            }
-            if (!methodMetaObj.baseClassIsKnown() && !recvObjContainsUnknown) {
-                solver.addVarPointsTo(context, m, invTp(methodMetaObj.getSignature(), recvObjs));
-            }
-            if (!methodMetaObj.signatureIsKnown()) {
-                solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
-            }
-            if (!methodMetaObj.baseClassIsKnown() && recvObjContainsUnknown
-                    && methodMetaObj.getMethodName() != null) {
-                solver.addVarPointsTo(context, m, invS2T(methodMetaObj.getSignature(), argObjs, A));
-            }
-        });
+        for (Type A: possibleA) {
+            mtdObjs.forEach(mtdObj -> {
+                if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
+                    return;
+                }
+                if (!methodMetaObj.baseClassIsKnown()) {
+                    solver.addVarPointsTo(context, m, invTp(methodMetaObj.getSignature(), recvObjs));
+                }
+                if (!methodMetaObj.signatureIsKnown()) {
+                    solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
+                }
+                if (!methodMetaObj.baseClassIsKnown() && recvObjContainsUnknown
+                        && methodMetaObj.getMethodName() != null) {
+                    solver.addVarPointsTo(context, m, invS2T(methodMetaObj.getSignature(), argObjs, A));
+                }
+            });
+        }
     }
 
     /**
@@ -88,7 +324,7 @@ class CollectiveInferenceModel extends AbstractModel {
      * @param recvObjs points-to set of the receiver object `y`
      * @return new objects pointed to by `m`
      */
-    private PointsToSet invTp(SignatureRecord signature, PointsToSet recvObjs) {
+    private PointsToSet invTp(MethodMetaObj.SignatureRecord signature, PointsToSet recvObjs) {
         PointsToSet result = solver.makePointsToSet();
 
         for (CSObj recvObj : recvObjs) {
@@ -139,14 +375,14 @@ class CollectiveInferenceModel extends AbstractModel {
             if (allPossibleArgTypes == null) {
                 result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
                         MethodMetaObj.DESC,
-                        MethodMetaObj.of(baseClass, SignatureRecord.of(null, null, possibleReturnType)),
+                        MethodMetaObj.of(baseClass, MethodMetaObj.SignatureRecord.of(null, null, possibleReturnType)),
                         MethodMetaObj.TYPE
                 )));
             } else {
                 for (var possibleArgTypes: allPossibleArgTypes) {
                     result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
                             MethodMetaObj.DESC,
-                            MethodMetaObj.of(baseClass, SignatureRecord.of(null, possibleArgTypes, possibleReturnType)),
+                            MethodMetaObj.of(baseClass, MethodMetaObj.SignatureRecord.of(null, possibleArgTypes, possibleReturnType)),
                             MethodMetaObj.TYPE
                     )));
                 }
@@ -164,7 +400,7 @@ class CollectiveInferenceModel extends AbstractModel {
      * @param resultType A
      * @return new objects pointed to by `m`
      */
-    private PointsToSet invS2T(SignatureRecord signature, PointsToSet argObjs,
+    private PointsToSet invS2T(MethodMetaObj.SignatureRecord signature, PointsToSet argObjs,
                                Type resultType) {
         PointsToSet result = solver.makePointsToSet();
         if (signature.methodName() == null) {
@@ -178,18 +414,18 @@ class CollectiveInferenceModel extends AbstractModel {
         }
 
         assert signature.paramTypes() == null;
-        List<SignatureRecord> possibleSigs = new ArrayList<>();
+        List<MethodMetaObj.SignatureRecord> possibleSigs = new ArrayList<>();
         var ptp = findArgTypes(argObjs);
         if (ptp != null) {
             for (var paramTypes: ptp) {
-                possibleSigs.add(SignatureRecord.of(signature.methodName(), paramTypes, returnType));
+                possibleSigs.add(MethodMetaObj.SignatureRecord.of(signature.methodName(), paramTypes, returnType));
             }
         }
 
-        List<Pair<SignatureRecord, List<JClass>>> possibleClasses = new ArrayList<>();
+        List<Pair<MethodMetaObj.SignatureRecord, List<JClass>>> possibleClasses = new ArrayList<>();
         for (var sig: possibleSigs) {
             possibleClasses.add(
-                    new Pair<>(sig, findClassByMethodSignature(sig.returnType(), sig.methodName(),
+                    new Pair<>(sig, findClassesByMethodSignature(resultType, sig.methodName(),
                             sig.paramTypes()))
             );
         }
@@ -241,8 +477,28 @@ class CollectiveInferenceModel extends AbstractModel {
         return result;
     }
 
-    private List<JClass> findClassByMethodSignature(@Nullable Type returnType, @NotNull String name,
-                                                    @NotNull List<Type> paramTypes) {
+    private List<JClass> findClassesByFieldSignature(@Nullable Type valueType, @NotNull String name,
+                                                     BiFunction<Type, Type, Boolean> typeCheck) {
+        return hierarchy.allClasses().filter(klass -> {
+            for (var field : klass.getDeclaredFields()) {
+                if (!field.isPublic()) {
+                    continue;
+                }
+                if (!field.getName().equals(name)) {
+                    continue;
+                }
+                Type fieldType = field.getType();
+                if (valueType != null && !typeCheck.apply(fieldType, valueType)) {
+                    continue;
+                }
+                return true;
+            }
+            return false;
+        }).toList();
+    }
+
+    private List<JClass> findClassesByMethodSignature(@Nullable Type resultType, @NotNull String name,
+                                                      @NotNull List<Type> paramTypes) {
         return hierarchy.allClasses().filter(klass -> {
             for (var method : klass.getDeclaredMethods()) {
                 if (!method.isPublic()) {
@@ -251,7 +507,9 @@ class CollectiveInferenceModel extends AbstractModel {
                 if (!method.getName().equals(name)) {
                     continue;
                 }
-                if (returnType != null && !method.getReturnType().equals(returnType)) {
+                Type returnType = method.getReturnType();
+                if (resultType != null && !returnType.equals(resultType)
+                        &&!typeSystem.isSubtype(returnType, resultType) && !typeSystem.isSubtype(resultType, returnType)) {
                     continue;
                 }
                 if (paramTypes != null) {

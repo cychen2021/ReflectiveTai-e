@@ -122,4 +122,12 @@ class FieldMetaObj {
     public int hashCode() {
         return Objects.hash(baseClass, signature);
     }
+
+    @Override
+    public String toString() {
+        return "FieldMetaObj{" +
+                "baseClass=" + baseClass +
+                ", signature=" + signature +
+                '}';
+    }
 }
