@@ -2,11 +2,10 @@ package pascal.taie.analysis.pta.plugin.solar;
 
 import pascal.taie.analysis.graph.callgraph.CallKind;
 import pascal.taie.analysis.graph.callgraph.Edge;
+import pascal.taie.analysis.graph.icfg.CallEdge;
+import pascal.taie.analysis.pta.PointerAnalysis;
 import pascal.taie.analysis.pta.core.cs.context.Context;
-import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
-import pascal.taie.analysis.pta.core.cs.element.CSCallSite;
-import pascal.taie.analysis.pta.core.cs.element.CSMethod;
-import pascal.taie.analysis.pta.core.cs.element.CSVar;
+import pascal.taie.analysis.pta.core.cs.element.*;
 import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
@@ -31,7 +30,58 @@ import java.util.*;
 
 class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
-    private final List<Pair<Set<CSVar>, Edge<CSCallSite, CSMethod>>> pendingInvokes = new ArrayList<>();
+    private final List<Pair<Set<CSVar>, ReflectionCallEdge>> pendingInvokes = new ArrayList<>();
+
+    private record ArgPassingEdge(CSVar from, CSVar to, Type type) {
+        public PointerFlowEdge.Kind kind() {
+            return PointerFlowEdge.Kind.PARAMETER_PASSING;
+        }
+    }
+
+    private class ReflectionCallEdge {
+        private final CSCallSite callSite;
+        private final CSMethod callee;
+        private final CSVar thisArg;
+        private final List<CSVar> args;
+
+        public ReflectionCallEdge(CSCallSite callSite, CSMethod callee, CSVar thisArg, List<CSVar> args) {
+            this.callSite = callSite;
+            this.callee = callee;
+            this.thisArg = thisArg;
+            this.args = args;
+        }
+
+        public Edge<CSCallSite, CSMethod> callEdge() {
+            return new Edge<>(CallKind.VIRTUAL, callSite, callee);
+        }
+
+        public List<ArgPassingEdge> pfgEdges() {
+            Context calleeContext = callee.getContext();
+            JMethod calleeMethod = callee.getMethod();
+            Var thisVar = calleeMethod.getIR().getThis();
+            List<Var> argVars = calleeMethod.getIR().getParams();
+
+            List<ArgPassingEdge> result = new ArrayList<>();
+            result.add(
+                new ArgPassingEdge(
+                        thisArg,
+                        csManager.getCSVar(calleeContext, thisVar),
+                        thisVar != null ? thisVar.getType() : null
+                )
+            );
+
+            for (int i = 0; i < args.size(); i++) {
+                result.add(
+                    new ArgPassingEdge(
+                        args.get(i),
+                        csManager.getCSVar(calleeContext, argVars.get(i)),
+                        argVars.get(i).getType()
+                    )
+                );
+            }
+            return result;
+        }
+    }
 
     protected TransformationModel(Solver solver) {
         super(solver);
@@ -139,7 +189,7 @@ class TransformationModel extends AbstractModel {
         outer:for (int i = 0; i < pendingInvokes.size(); i++) {
             var pair = pendingInvokes.get(i);
             var relevantVars = pair.first();
-            if (relevantVars.contains(csVar)) {
+            if (relevantVars.isEmpty() || relevantVars.contains(csVar)) {
                 for (var arg: relevantVars) {
                     var argPts = arg == csVar ? pts : solver.getPointsToSetOf(arg);
                     if (argPts == null || argPts.isEmpty()) {
@@ -147,7 +197,12 @@ class TransformationModel extends AbstractModel {
                     }
                 }
                 var edge = pair.second();
-                solver.addCallEdge(edge);
+                solver.addCallEdge(edge.callEdge());
+
+                var pfgEdges = edge.pfgEdges();
+                for (var pfgEdge: pfgEdges) {
+                    solver.addPFGEdge(pfgEdge.from(), pfgEdge.to(), pfgEdge.kind(), pfgEdge.type());
+                }
                 toRemove.add(i);
             }
         }
@@ -220,7 +275,9 @@ class TransformationModel extends AbstractModel {
                         new InvokeVirtual(callee.getRef(), receiveVar, freshArgs));
                 var mockCallSite = csManager.getCSCallSite(context, mockInvoke);
                 var csCallee = csManager.getCSMethod(context, callee);
-                pendingInvokes.add(new Pair<>(new HashSet<>(csFreshArgs), new Edge<>(CallKind.VIRTUAL, mockCallSite, csCallee)));
+                pendingInvokes.add(new Pair<>(new HashSet<>(csFreshArgs),
+                        new ReflectionCallEdge(mockCallSite, csCallee,
+                                csManager.getCSVar(context, receiveVar), csFreshArgs)));
             }
         });
     }

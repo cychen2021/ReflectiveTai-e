@@ -285,9 +285,20 @@ class CollectiveInferenceModel extends AbstractModel {
         Var x = invoke.getLValue();
         InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
         Var m = iExp.getBase();
-        Set<Type> possibleA = castToTypes.get(x);
-        if (possibleA.isEmpty()) {
-            return;
+        Set<Type> possibleA;
+        if (x == null) {
+            possibleA = new HashSet<>(List.of(PrimitiveType.values()));
+            possibleA.add(VoidType.VOID);
+            possibleA.add(LAZY_OBJ_UNKNOWN_TYPE);
+        } else {
+             var tmp = castToTypes.get(x);
+             if (tmp.isEmpty()) {
+                 possibleA = new HashSet<>(List.of(PrimitiveType.values()));
+                 possibleA.add(VoidType.VOID);
+                 possibleA.add(LAZY_OBJ_UNKNOWN_TYPE);
+             } else {
+                 possibleA = tmp;
+             }
         }
 
         PointsToSet mtdObjs = args.get(0); // m
