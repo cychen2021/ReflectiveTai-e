@@ -2,8 +2,6 @@ package pascal.taie.analysis.pta.plugin.solar;
 
 import pascal.taie.analysis.graph.callgraph.CallKind;
 import pascal.taie.analysis.graph.callgraph.Edge;
-import pascal.taie.analysis.graph.icfg.CallEdge;
-import pascal.taie.analysis.pta.PointerAnalysis;
 import pascal.taie.analysis.pta.core.cs.context.Context;
 import pascal.taie.analysis.pta.core.cs.element.*;
 import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
@@ -20,7 +18,6 @@ import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.ir.stmt.LoadField;
 import pascal.taie.ir.stmt.Stmt;
 import pascal.taie.ir.stmt.StoreField;
-import pascal.taie.language.classes.JField;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.NullType;
 import pascal.taie.language.type.Type;
@@ -32,9 +29,51 @@ class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
     private final List<Pair<Set<CSVar>, ReflectionCallEdge>> pendingInvokes = new ArrayList<>();
 
-    private record ArgPassingEdge(CSVar from, CSVar to, Type type) {
+    private abstract class PointerPassingEdge {
+        private CSVar from;
+        private CSVar to;
+        private Type type;
+
+        public PointerPassingEdge(CSVar from, CSVar to, Type type) {
+            this.from = from;
+            this.to = to;
+            this.type = type;
+        }
+
+        public abstract PointerFlowEdge.Kind kind();
+
+        public CSVar from() {
+            return from;
+        }
+
+        public CSVar to() {
+            return to;
+        }
+
+        public Type type() {
+            return type;
+        }
+    }
+
+    private class ArgPassingEdge extends PointerPassingEdge {
+        public ArgPassingEdge(CSVar from, CSVar to, Type type) {
+            super(from, to, type);
+        }
+
+        @Override
         public PointerFlowEdge.Kind kind() {
             return PointerFlowEdge.Kind.PARAMETER_PASSING;
+        }
+    }
+
+    private class ReturnEdge extends PointerPassingEdge {
+        public ReturnEdge(CSVar from, CSVar to, Type type) {
+            super(from, to, type);
+        }
+
+        @Override
+        public PointerFlowEdge.Kind kind() {
+            return PointerFlowEdge.Kind.RETURN;
         }
     }
 
@@ -44,31 +83,36 @@ class TransformationModel extends AbstractModel {
         private final CSVar thisArg;
         private final List<CSVar> args;
 
-        public ReflectionCallEdge(CSCallSite callSite, CSMethod callee, CSVar thisArg, List<CSVar> args) {
+        private final CSVar resultReceiver;
+
+        public ReflectionCallEdge(CSCallSite callSite, CSMethod callee, CSVar thisArg, List<CSVar> args, CSVar resultReceiver) {
             this.callSite = callSite;
             this.callee = callee;
             this.thisArg = thisArg;
             this.args = args;
+            this.resultReceiver = resultReceiver;
         }
 
         public Edge<CSCallSite, CSMethod> callEdge() {
             return new Edge<>(CallKind.VIRTUAL, callSite, callee);
         }
 
-        public List<ArgPassingEdge> pfgEdges() {
+        public List<PointerPassingEdge> pfgEdges() {
             Context calleeContext = callee.getContext();
             JMethod calleeMethod = callee.getMethod();
             Var thisVar = calleeMethod.getIR().getThis();
             List<Var> argVars = calleeMethod.getIR().getParams();
 
-            List<ArgPassingEdge> result = new ArrayList<>();
-            result.add(
-                new ArgPassingEdge(
-                        thisArg,
-                        csManager.getCSVar(calleeContext, thisVar),
-                        thisVar != null ? thisVar.getType() : null
-                )
-            );
+            List<PointerPassingEdge> result = new ArrayList<>();
+            if (thisVar != null) {
+                result.add(
+                        new ArgPassingEdge(
+                                thisArg,
+                                csManager.getCSVar(calleeContext, thisVar),
+                                thisVar.getType()
+                        )
+                );
+            }
 
             for (int i = 0; i < args.size(); i++) {
                 result.add(
@@ -79,6 +123,22 @@ class TransformationModel extends AbstractModel {
                     )
                 );
             }
+
+            if (resultReceiver == null) {
+                return result;
+            }
+
+            List<Var> returnVars = calleeMethod.getIR().getReturnVars();
+            for (Var returnVar: returnVars) {
+                result.add(
+                        new ReturnEdge(
+                                csManager.getCSVar(calleeContext, returnVar),
+                                resultReceiver,
+                                calleeMethod.getReturnType()
+                        )
+                );
+            }
+
             return result;
         }
     }
@@ -90,7 +150,7 @@ class TransformationModel extends AbstractModel {
     @Override
     protected void registerVarAndHandler() {
         JMethod methodInvoke = hierarchy.getJREMethod("<java.lang.reflect.Method: java.lang.Object invoke(java.lang.Object,java.lang.Object[])>");
-        registerRelevantVarIndexes(methodInvoke, BASE, 1);
+        registerRelevantVarIndexes(methodInvoke, BASE, 0, 1);
         registerAPIHandler(methodInvoke, this::methodInvoke);
 
         JMethod fieldGet = hierarchy.getJREMethod("<java.lang.reflect.Field: java.lang.Object get(java.lang.Object)>");
@@ -185,7 +245,7 @@ class TransformationModel extends AbstractModel {
     }
 
     public void watchFreshArgs(CSVar csVar, PointsToSet pts) {
-        List<Integer> toRemove = new ArrayList<>();
+        Stack<Integer> toRemove = new Stack<>();
         outer:for (int i = 0; i < pendingInvokes.size(); i++) {
             var pair = pendingInvokes.get(i);
             var relevantVars = pair.first();
@@ -203,20 +263,24 @@ class TransformationModel extends AbstractModel {
                 for (var pfgEdge: pfgEdges) {
                     solver.addPFGEdge(pfgEdge.from(), pfgEdge.to(), pfgEdge.kind(), pfgEdge.type());
                 }
-                toRemove.add(i);
+                if (toRemove.isEmpty() || toRemove.peek() != i) {
+                    toRemove.push(i);
+                }
             }
         }
-        for (var idx: toRemove) {
-            pendingInvokes.remove(idx.intValue());
+        while (!toRemove.isEmpty()) {
+            pendingInvokes.remove(toRemove.pop().intValue());
         }
     }
 
     private void methodInvoke(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
-        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 1);
+        List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0, 1);
         PointsToSet mtdMetaObjs = args.get(0);
-        PointsToSet argArrayObjs = args.get(1);
+        PointsToSet receiveObjs = args.get(1);
+        PointsToSet argArrayObjs = args.get(2);
         var receiveVar = invoke.getInvokeExp().getArg(0);
+        Var resultVar = invoke.getResult();
 
         mtdMetaObjs.forEach(mtd -> {
             if (!(mtd.getObject().getAllocation() instanceof MethodMetaObj mtdMetaObj)) {
@@ -243,9 +307,15 @@ class TransformationModel extends AbstractModel {
                     if (!mtdMetaObj.baseClassIsKnown()) {
                         continue;
                     }
-                    JMethod callee = hierarchy.dispatch(mtdMetaObj.getBaseClass(), methodRef);
-                    if (callee != null) {
-                        methods.add(callee);
+                    for (CSObj receiveObj: receiveObjs) {
+                        Type receiveType = receiveObj.getObject().getType();
+                        if (!Util.isConcerned(receiveType)) {
+                            continue;
+                        }
+                        JMethod callee = hierarchy.dispatch(receiveType, methodRef);
+                        if (callee != null) {
+                            methods.add(callee);
+                        }
                     }
                 }
             }
@@ -264,11 +334,21 @@ class TransformationModel extends AbstractModel {
 
                 var csFreshArgs = freshArgs.stream().map(arg -> csManager.getCSVar(context, arg)).toList();
 
+                boolean satisfied = false;
                 for (var arrObj: argArrayObjs) {
+                    int arrLen = Util.constArraySize(arrObj.getObject());
+                    if (arrLen != -1 && arrLen != declaredParamTypes.size()) {
+                        continue;
+                    }
+                    satisfied = true;
                     ArrayIndex index = csManager.getArrayIndex(arrObj);
                     for (var csFreshArg: csFreshArgs) {
                         solver.addPFGEdge(index, csFreshArg, PointerFlowEdge.Kind.ARRAY_LOAD, csFreshArg.getType());
                     }
+                }
+
+                if (!satisfied) {
+                    continue;
                 }
 
                 var mockInvoke = new Invoke(callee,
@@ -276,8 +356,14 @@ class TransformationModel extends AbstractModel {
                 var mockCallSite = csManager.getCSCallSite(context, mockInvoke);
                 var csCallee = csManager.getCSMethod(context, callee);
                 pendingInvokes.add(new Pair<>(new HashSet<>(csFreshArgs),
-                        new ReflectionCallEdge(mockCallSite, csCallee,
-                                csManager.getCSVar(context, receiveVar), csFreshArgs)));
+                        new ReflectionCallEdge(
+                                mockCallSite,
+                                csCallee,
+                                csManager.getCSVar(context, receiveVar),
+                                csFreshArgs,
+                                resultVar != null ? csManager.getCSVar(context, resultVar) : null
+                        )
+                ));
             }
         });
     }

@@ -104,9 +104,6 @@ class CollectiveInferenceModel extends AbstractModel {
         InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
         Var f = iExp.getBase();
         Set<Type> possibleA = castToTypes.get(x);
-        if (possibleA.isEmpty()) {
-            return;
-        }
 
         PointsToSet fldObjs = args.get(0); // m
         PointsToSet recvObjs = args.get(1); // y
@@ -115,14 +112,14 @@ class CollectiveInferenceModel extends AbstractModel {
         boolean recvObjContainsUnknown = recvObjs.objects()
                 .anyMatch(Util::isLazyObjUnknownType);
 
-        for (Type A: possibleA) {
-            fldObjs.forEach(fldObj -> {
-                if (!(fldObj.getObject().getAllocation() instanceof FieldMetaObj fieldMetaObj)) {
-                    return;
-                }
-                if (!fieldMetaObj.baseClassIsKnown()) {
-                    solver.addVarPointsTo(context, f, getTp(fieldMetaObj.getSignature(), recvObjs));
-                }
+        fldObjs.forEach(fldObj -> {
+            if (!(fldObj.getObject().getAllocation() instanceof FieldMetaObj fieldMetaObj)) {
+                return;
+            }
+            if (!fieldMetaObj.baseClassIsKnown()) {
+                solver.addVarPointsTo(context, f, getTp(fieldMetaObj.getSignature(), recvObjs));
+            }
+            for (Type A: possibleA) {
                 if (!fieldMetaObj.signatureIsKnown()) {
                     solver.addVarPointsTo(context, f, getSig(fieldMetaObj.getBaseClass(), A));
                 }
@@ -130,8 +127,8 @@ class CollectiveInferenceModel extends AbstractModel {
                         && fieldMetaObj.getFieldName() != null) {
                     solver.addVarPointsTo(context, f, getS2T(fieldMetaObj.getSignature(), A));
                 }
-            });
-        }
+            }
+        });
     }
 
     private PointsToSet setS2T(FieldMetaObj.SignatureRecord signature, PointsToSet valueObjs) {
@@ -309,14 +306,14 @@ class CollectiveInferenceModel extends AbstractModel {
         boolean recvObjContainsUnknown = recvObjs.objects()
                 .anyMatch(Util::isLazyObjUnknownType);
 
-        for (Type A: possibleA) {
-            mtdObjs.forEach(mtdObj -> {
-                if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
-                    return;
-                }
-                if (!methodMetaObj.baseClassIsKnown()) {
-                    solver.addVarPointsTo(context, m, invTp(methodMetaObj.getSignature(), recvObjs));
-                }
+        mtdObjs.forEach(mtdObj -> {
+            if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
+                return;
+            }
+            if (!methodMetaObj.baseClassIsKnown()) {
+                solver.addVarPointsTo(context, m, invTp(methodMetaObj.getSignature(), recvObjs));
+            }
+            for (Type A: possibleA) {
                 if (!methodMetaObj.signatureIsKnown()) {
                     solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
                 }
@@ -324,8 +321,8 @@ class CollectiveInferenceModel extends AbstractModel {
                         && methodMetaObj.getMethodName() != null) {
                     solver.addVarPointsTo(context, m, invS2T(methodMetaObj.getSignature(), argObjs, A));
                 }
-            });
-        }
+            }
+        });
     }
 
     /**
