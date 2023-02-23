@@ -1,0 +1,46 @@
+Points-to sets of all variables
+[]:<FieldS2T: java.lang.String unknown(java.lang.String)>/s -> [[]:ConstantObj{java.lang.String: "B"}]
+[]:<FieldS2T: java.lang.String unknown(java.lang.String)>/temp$0 -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<FieldS2T: void invoke(java.lang.String)>/%stringconst0 -> [[]:ConstantObj{java.lang.String: "field1"}]
+[]:<FieldS2T: void invoke(java.lang.String)>/a -> [[]:LazyObj{alloc=TYPE_KNOWN,type=A}, []:LazyObj{alloc=TYPE_KNOWN,type=B}, []:LazyObj{alloc=TYPE_UNKNOWN,type=java.lang.Object}]
+[]:<FieldS2T: void invoke(java.lang.String)>/c -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=null},type=java.lang.Class}]
+[]:<FieldS2T: void invoke(java.lang.String)>/field11 -> [[]:FieldMetaObj{alloc=FieldMetaObj{baseClass=A, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}, []:FieldMetaObj{alloc=FieldMetaObj{baseClass=B, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}, []:FieldMetaObj{alloc=FieldMetaObj{baseClass=null, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}]
+[]:<FieldS2T: void invoke(java.lang.String)>/field12 -> [[]:FieldMetaObj{alloc=FieldMetaObj{baseClass=A, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}, []:FieldMetaObj{alloc=FieldMetaObj{baseClass=B, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}, []:FieldMetaObj{alloc=FieldMetaObj{baseClass=null, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}]
+[]:<FieldS2T: void invoke(java.lang.String)>/name -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<FieldS2T: void invoke(java.lang.String)>/num -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$0 -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=null},type=java.lang.Class}]
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$1 -> [[]:LazyObj{alloc=TYPE_UNKNOWN,type=java.lang.Object}]
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$2 -> [[]:FieldMetaObj{alloc=FieldMetaObj{baseClass=null, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}]
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$3 -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$4 -> []
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$5 -> [[]:FieldMetaObj{alloc=FieldMetaObj{baseClass=null, signature=SignatureRecord[fieldName=field1, fieldType=null]},type=java.lang.reflect.Field}]
+[]:<FieldS2T: void invoke(java.lang.String)>/temp$6 -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:<FieldS2T: void main(java.lang.String[])>/%stringconst0 -> [[]:ConstantObj{java.lang.String: "B"}]
+[]:<FieldS2T: void main(java.lang.String[])>/args -> [[]:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <FieldS2T: void main(java.lang.String[])>}]
+[]:<FieldS2T: void main(java.lang.String[])>/temp$0 -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<X: void <init>()>/%this -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:<Y: void <init>()>/%this -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/$r1 -> []
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}]
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r2 -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
+[]:<java.lang.ThreadGroup: void <init>()>/%stringconst1 -> []
+[]:<java.lang.ThreadGroup: void <init>()>/%this -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r1 -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
+
+Points-to sets of all static fields
+<java.lang.System: java.io.PrintStream out> -> []
+
+Points-to sets of all instance fields
+[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}.blockerLock -> []
+[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}.name -> []
+[]:LazyObj{alloc=TYPE_KNOWN,type=A}.field1 -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:LazyObj{alloc=TYPE_KNOWN,type=A}.field1 -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:LazyObj{alloc=TYPE_KNOWN,type=B}.field1 -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+[]:LazyObj{alloc=TYPE_KNOWN,type=B}.field1 -> [[]:NewObj{<FieldS2T: void invoke(java.lang.String)>[13@L16] new Y}]
+
+Points-to sets of all array indexes
+[]:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <FieldS2T: void main(java.lang.String[])>}[*] -> [[]:EntryPointObj{alloc=<main-arguments-element>,type=java.lang.String in <FieldS2T: void main(java.lang.String[])>}]
+
