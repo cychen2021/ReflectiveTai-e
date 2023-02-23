@@ -34,6 +34,7 @@ import pascal.taie.analysis.pta.core.cs.context.ContextTest;
         ExceptionTest.class,
         LambdaTest.class,
         ReflectionTest.class,
+        SolarTest.class,
         TaintTest.class,
 })
 public class PTATestSuite {

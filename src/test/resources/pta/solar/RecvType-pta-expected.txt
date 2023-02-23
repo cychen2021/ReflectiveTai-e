@@ -1,0 +1,47 @@
+Points-to sets of all variables
+[]:<K: void <init>()>/%this -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[6@L13] new K}]
+[]:<K: void bar()>/%stringconst0 -> [[]:ConstantObj{java.lang.String: "K.bar()"}]
+[]:<K: void bar()>/%this -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[6@L13] new K}]
+[]:<K: void bar()>/temp$0 -> []
+[]:<K: void foo()>/%stringconst0 -> [[]:ConstantObj{java.lang.String: "K.foo()"}]
+[]:<K: void foo()>/%this -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[6@L13] new K}]
+[]:<K: void foo()>/temp$0 -> []
+[]:<RecvType: java.lang.String unknown(java.lang.String)>/s -> [[]:ConstantObj{java.lang.String: "K"}]
+[]:<RecvType: java.lang.String unknown(java.lang.String)>/temp$0 -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/c -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=null},type=java.lang.Class}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/cName -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/k -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[6@L13] new K}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/m -> [[]:MethodMetaObj{alloc=MethodMetaObj{baseClass=K, signature=SignatureRecord[methodName=bar, paramTypes=null, returnType=null]},type=java.lang.reflect.Method}, []:MethodMetaObj{alloc=MethodMetaObj{baseClass=K, signature=SignatureRecord[methodName=foo, paramTypes=null, returnType=null]},type=java.lang.reflect.Method}, []:MethodMetaObj{alloc=MethodMetaObj{baseClass=null, signature=SignatureRecord[methodName=bar, paramTypes=null, returnType=null]},type=java.lang.reflect.Method}, []:MethodMetaObj{alloc=MethodMetaObj{baseClass=null, signature=SignatureRecord[methodName=foo, paramTypes=null, returnType=null]},type=java.lang.reflect.Method}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/mName -> [[]:ConstantObj{java.lang.String: "bar"}, []:ConstantObj{java.lang.String: "foo"}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/temp$0 -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=null},type=java.lang.Class}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/temp$1 -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[3@L12] newarray java.lang.Class[%intconst0]}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/temp$2 -> [[]:MethodMetaObj{alloc=MethodMetaObj{baseClass=null, signature=SignatureRecord[methodName=bar, paramTypes=null, returnType=null]},type=java.lang.reflect.Method}, []:MethodMetaObj{alloc=MethodMetaObj{baseClass=null, signature=SignatureRecord[methodName=foo, paramTypes=null, returnType=null]},type=java.lang.reflect.Method}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/temp$3 -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[6@L13] new K}]
+[]:<RecvType: void invoke(java.lang.String,java.lang.String)>/temp$4 -> [[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[9@L14] newarray java.lang.Object[%intconst0]}]
+[]:<RecvType: void main(java.lang.String[])>/%stringconst0 -> [[]:ConstantObj{java.lang.String: "K"}]
+[]:<RecvType: void main(java.lang.String[])>/%stringconst1 -> [[]:ConstantObj{java.lang.String: "foo"}]
+[]:<RecvType: void main(java.lang.String[])>/%stringconst2 -> [[]:ConstantObj{java.lang.String: "bar"}]
+[]:<RecvType: void main(java.lang.String[])>/args -> [[]:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <RecvType: void main(java.lang.String[])>}]
+[]:<RecvType: void main(java.lang.String[])>/temp$0 -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<RecvType: void main(java.lang.String[])>/temp$1 -> [[]:MergedObj{<Merged java.lang.String>}]
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/$r1 -> []
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}]
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r2 -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
+[]:<java.lang.ThreadGroup: void <init>()>/%stringconst1 -> []
+[]:<java.lang.ThreadGroup: void <init>()>/%this -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r1 -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
+[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
+
+Points-to sets of all static fields
+<java.lang.System: java.io.PrintStream out> -> []
+
+Points-to sets of all instance fields
+[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}.blockerLock -> []
+[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}.name -> []
+
+Points-to sets of all array indexes
+[]:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <RecvType: void main(java.lang.String[])>}[*] -> [[]:EntryPointObj{alloc=<main-arguments-element>,type=java.lang.String in <RecvType: void main(java.lang.String[])>}]
+[]:NewObj{<RecvType: void invoke(java.lang.String,java.lang.String)>[9@L14] newarray java.lang.Object[%intconst0]}[*] -> []
+
