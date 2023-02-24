@@ -45,15 +45,6 @@ Points-to sets of all variables
 []:<Inheritance: void invokeFoo()>/temp$6 -> [[]:NewObj{<Inheritance: void invokeFoo()>[18@L14] newarray java.lang.Object[%intconst1]}]
 []:<Inheritance: void main(java.lang.String[])>/args -> [[]:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <Inheritance: void main(java.lang.String[])>}]
 []:<Middle: void <init>()>/%this -> [[]:NewObj{<Inheritance: void invokeBar()>[15@L19] new Derived}, []:NewObj{<Inheritance: void invokeBar2()>[15@L25] new Derived}, []:NewObj{<Inheritance: void invokeFoo()>[15@L13] new Derived}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/$r1 -> []
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r2 -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
-[]:<java.lang.ThreadGroup: void <init>()>/%stringconst1 -> []
-[]:<java.lang.ThreadGroup: void <init>()>/%this -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r1 -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
 
 Points-to sets of all static fields
 <Inheritance: java.lang.Class class$Base> -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=Base},type=java.lang.Class}, []:ClassMetaObj{alloc=ClassMetaObj{knownClass=Derived},type=java.lang.Class}]
@@ -61,8 +52,6 @@ Points-to sets of all static fields
 <java.lang.System: java.io.PrintStream out> -> []
 
 Points-to sets of all instance fields
-[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}.blockerLock -> []
-[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}.name -> []
 
 Points-to sets of all array indexes
 []:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <Inheritance: void main(java.lang.String[])>}[*] -> [[]:EntryPointObj{alloc=<main-arguments-element>,type=java.lang.String in <Inheritance: void main(java.lang.String[])>}]

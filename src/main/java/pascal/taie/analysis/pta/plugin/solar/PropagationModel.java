@@ -17,8 +17,16 @@ import pascal.taie.language.classes.JMethod;
 import java.util.List;
 
 class PropagationModel extends AbstractModel {
-    PropagationModel(Solver solver) {
+    private final ClassMetaObj.Builder classMetaObjBuilder;
+    private final MethodMetaObj.Builder methodMetaObjBuilder;
+    private final FieldMetaObj.Builder fieldMetaObjBuilder;
+
+    PropagationModel(Solver solver, ClassMetaObj.Builder classMetaObjBuilder,
+                     MethodMetaObj.Builder methodMetaObjBuilder, FieldMetaObj.Builder fieldMetaObjBuilder) {
         super(solver);
+        this.classMetaObjBuilder = classMetaObjBuilder;
+        this.methodMetaObjBuilder = methodMetaObjBuilder;
+        this.fieldMetaObjBuilder = fieldMetaObjBuilder;
     }
 
     @Override
@@ -59,9 +67,8 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                FieldMetaObj metaObj = FieldMetaObj.of(baseCls, fName == null ? null : FieldMetaObj.SignatureRecord.of(fName, null));
-
-                Obj fldObj = heapModel.getMockObj(FieldMetaObj.DESC, metaObj, FieldMetaObj.TYPE);
+                FieldMetaObj metaObj = fieldMetaObjBuilder.build(baseCls, fName == null ? null : FieldMetaObj.SignatureRecord.of(fName, null));
+                Obj fldObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, fldObj);
                 Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);
@@ -82,14 +89,8 @@ class PropagationModel extends AbstractModel {
             solver.initializeClass(klass);
             Var result = invoke.getResult();
             if (result != null) {
-                ClassMetaObj metaObj;
-                if (klass == null) {
-                    metaObj = ClassMetaObj.unknown();
-                } else {
-                    metaObj = ClassMetaObj.known(klass);
-                }
-
-                Obj clsObj = heapModel.getMockObj(ClassMetaObj.DESC, metaObj, ClassMetaObj.TYPE);
+                ClassMetaObj metaObj = classMetaObjBuilder.build(klass);
+                Obj clsObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
                 solver.addVarPointsTo(context, result, csObj);
             }
@@ -110,9 +111,9 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                MethodMetaObj metaObj = MethodMetaObj.of(baseCls, mName == null ? null : MethodMetaObj.SignatureRecord.of(mName, null, null));
+                MethodMetaObj metaObj = methodMetaObjBuilder.build(baseCls, mName == null ? null : MethodMetaObj.SignatureRecord.of(mName, null, null));
 
-                Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj, MethodMetaObj.TYPE);
+                Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
                 Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);
@@ -131,10 +132,10 @@ class PropagationModel extends AbstractModel {
                 baseCls = clsMetaObj.getJClass();
             }
 
-            MethodMetaObj metaObj = MethodMetaObj.of(baseCls, null);
+            MethodMetaObj metaObj = methodMetaObjBuilder.build(baseCls, null);
 
-            Obj mtdObj = heapModel.getMockObj(MethodMetaObj.DESC, metaObj,
-                    typeSystem.getArrayType(MethodMetaObj.TYPE, 1));
+            Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj,
+                    typeSystem.getArrayType(metaObj.getType(), 1));
             CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
             ArrayIndex idx = csManager.getArrayIndex(csObj);
             Var result = invoke.getResult();

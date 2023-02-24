@@ -27,15 +27,13 @@ class LazyHeapModel extends AbstractModel {
     protected final Set<TriConsumer<CSVar, PointsToSet, Cast>> castHandlers
             = Sets.newHybridSet();
 
-    public final String LAZY_OBJ_DESC = "LazyObj";
-
-    private final Type LAZY_OBJ_UNKNOWN_TYPE;
-
-    LazyHeapModel(Solver solver, Type lazyObjUnknownType) {
+    LazyHeapModel(Solver solver, LazyObj.Builder lazyObjBuilder) {
         super(solver);
-        this.LAZY_OBJ_UNKNOWN_TYPE = lazyObjUnknownType;
+        this.lazyObjBuilder = lazyObjBuilder;
         registerCastHandlers();
     }
+
+    private final LazyObj.Builder lazyObjBuilder;
 
     @Override
     protected void registerVarAndHandler() {
@@ -65,7 +63,7 @@ class LazyHeapModel extends AbstractModel {
         var argObjs = args.get(1);
         if (argObjs.objects().noneMatch(argObj -> {
             if (argObj.getObject().getAllocation() instanceof LazyObj lazyObj) {
-                return lazyObj == LazyObj.TYPE_UNKNOWN;
+                return !lazyObj.isKnown();
             }
             return false;
         })) {
@@ -79,10 +77,11 @@ class LazyHeapModel extends AbstractModel {
                     var baseClass = metaObj.getBaseClass();
                     var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
                     possibleClasses.addAll(Util.superClassesOf(baseClass));
-                    possibleClasses.remove(((ClassType) LAZY_OBJ_UNKNOWN_TYPE).getJClass());
+                    possibleClasses.remove(((ClassType)lazyObjBuilder.getUnknownType()).getJClass());
                     for (var possibleClass: possibleClasses) {
-                        Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
-                                possibleClass.getType());
+                        LazyObj lazyObj = lazyObjBuilder.known(possibleClass.getType());
+                        Obj obj = heapModel.getMockObj(lazyObj.getDesc(), lazyObj,
+                                lazyObj.getType());
                         CSObj csObj = csManager.getCSObj(context, obj);
                         solver.addVarPointsTo(context, firstArg, csObj);
                     }
@@ -97,7 +96,7 @@ class LazyHeapModel extends AbstractModel {
         var argObjs = args.get(1);
         if (argObjs.objects().noneMatch(argObj -> {
             if (argObj.getObject().getAllocation() instanceof LazyObj lazyObj) {
-                return lazyObj == LazyObj.TYPE_UNKNOWN;
+                return !lazyObj.isKnown();
             }
             return false;
         })) {
@@ -111,10 +110,11 @@ class LazyHeapModel extends AbstractModel {
                     var baseClass = metaObj.getBaseClass();
                     var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
                     possibleClasses.addAll(Util.superClassesOf(baseClass));
-                    possibleClasses.remove(((ClassType) LAZY_OBJ_UNKNOWN_TYPE).getJClass());
+                    possibleClasses.remove(((ClassType) lazyObjBuilder.getUnknownType()).getJClass());
                     for (var possibleClass: possibleClasses) {
-                        Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
-                                possibleClass.getType());
+                        LazyObj lazyObj = lazyObjBuilder.known(possibleClass.getType());
+                        Obj obj = heapModel.getMockObj(lazyObj.getDesc(), lazyObj,
+                                lazyObj.getType());
                         CSObj csObj = csManager.getCSObj(context, obj);
                         solver.addVarPointsTo(context, firstArg, csObj);
                     }
@@ -136,15 +136,15 @@ class LazyHeapModel extends AbstractModel {
             if (!(baseObj.getObject().getAllocation() instanceof ClassMetaObj classMetaObj)) {
                 return;
             }
-            CSObj csObj;
+            LazyObj lazyObj;
             if (classMetaObj.isKnown()) {
-                Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN,
-                        classMetaObj.getJClass().getType());
-                csObj = csManager.getCSObj(context, obj);
+                lazyObj = lazyObjBuilder.known(classMetaObj.getJClass().getType());
             } else {
-                Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_UNKNOWN, LAZY_OBJ_UNKNOWN_TYPE);
-                csObj = csManager.getCSObj(context, obj);
+                lazyObj = lazyObjBuilder.unknown();
             }
+            Obj obj = heapModel.getMockObj(lazyObj.getDesc(), lazyObj,
+                    lazyObj.getType());
+            CSObj csObj = csManager.getCSObj(context, obj);
             solver.addVarPointsTo(context, result, csObj);
         });
     }
@@ -158,8 +158,9 @@ class LazyHeapModel extends AbstractModel {
 
         pts.forEach(srcObj -> {
             if (srcObj.getObject().getAllocation() instanceof LazyObj lazyObj) {
-                if (lazyObj == LazyObj.TYPE_UNKNOWN) {
-                    Obj obj = heapModel.getMockObj(LAZY_OBJ_DESC, LazyObj.TYPE_KNOWN, castType);
+                if (!lazyObj.isKnown()) {
+                    LazyObj newLazyObj = lazyObjBuilder.known(castType);
+                    Obj obj = heapModel.getMockObj(newLazyObj.getDesc(), newLazyObj, newLazyObj.getType());
                     CSObj csObj = csManager.getCSObj(context, obj);
                     solver.addVarPointsTo(context, target, csObj);
                 }
@@ -170,7 +171,7 @@ class LazyHeapModel extends AbstractModel {
     public void handleNewCast(Cast cast) {
         CastExp exp = cast.getRValue();
         Type castType = exp.getCastType();
-        if (castType.equals(LAZY_OBJ_UNKNOWN_TYPE)) {
+        if (castType.equals(lazyObjBuilder.getUnknownType())) {
             return;
         }
         Var source = exp.getValue();

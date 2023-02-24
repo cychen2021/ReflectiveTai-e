@@ -52,7 +52,7 @@ class Util {
 
     static boolean isLazyObjUnknownType(CSObj obj) {
          if (obj.getObject().getAllocation() instanceof LazyObj lazy) {
-             return lazy.equals(LazyObj.TYPE_UNKNOWN);
+             return !lazy.isKnown();
          }
          return false;
     }

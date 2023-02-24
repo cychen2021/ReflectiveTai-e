@@ -6,6 +6,7 @@ import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.Type;
+import pascal.taie.language.type.TypeSystem;
 
 import javax.annotation.Nullable;
 
@@ -75,18 +76,35 @@ class MethodMetaObj {
         return signature != null;
     }
 
-    private MethodMetaObj(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
+    private MethodMetaObj(@Nullable JClass baseClass, @Nullable SignatureRecord signature, Type type) {
         this.baseClass = baseClass;
         this.signature = signature;
+        this.type = type;
     }
 
-    public static MethodMetaObj of(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
-        return new MethodMetaObj(baseClass, signature);
+    static class Builder {
+        private final Type META_OBJ_TYPE;
+
+        public Builder(TypeSystem typeSystem) {
+            this.META_OBJ_TYPE = typeSystem.getType(METHOD);
+        }
+
+        public MethodMetaObj build(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
+            return new MethodMetaObj(baseClass, signature, META_OBJ_TYPE);
+        }
     }
 
-    public static final ClassType TYPE = World.get().getTypeSystem().getClassType(METHOD);
+    private final Type type;
 
-    public static final String DESC = "MethodMetaObj";
+    public Type getType() {
+        return type;
+    }
+
+    private static final String DESC = "MethodMetaObj";
+
+    public String getDesc() {
+        return DESC;
+    }
 
     public Set<MethodRef> search() {
         if (!baseClassIsKnown()) {
@@ -122,12 +140,12 @@ class MethodMetaObj {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MethodMetaObj that = (MethodMetaObj) o;
-        return Objects.equals(baseClass, that.baseClass) && Objects.equals(signature, that.signature);
+        return Objects.equals(type, that.type) && Objects.equals(baseClass, that.baseClass) && Objects.equals(signature, that.signature);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(baseClass, signature);
+        return Objects.hash(type, baseClass, signature);
     }
 
     @Override

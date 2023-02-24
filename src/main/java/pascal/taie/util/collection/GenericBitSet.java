@@ -22,6 +22,7 @@
 
 package pascal.taie.util.collection;
 
+import pascal.taie.language.classes.JClass;
 import pascal.taie.util.Hashes;
 
 import javax.annotation.Nonnull;

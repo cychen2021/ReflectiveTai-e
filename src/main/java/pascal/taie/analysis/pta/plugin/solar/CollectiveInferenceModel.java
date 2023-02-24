@@ -31,18 +31,22 @@ import javax.annotation.Nullable;
 import static pascal.taie.analysis.pta.plugin.solar.Util.*;
 
 class CollectiveInferenceModel extends AbstractModel {
-    private final Type LAZY_OBJ_UNKNOWN_TYPE;
+    private final LazyObj.Builder lazyObjBuilder;
+    private final MethodMetaObj.Builder methodMetaObjBuilder;
+    private final FieldMetaObj.Builder fieldMetaObjBuilder;
 
-    CollectiveInferenceModel(Solver solver, Type lazyObjUnknownType) {
+    CollectiveInferenceModel(Solver solver, LazyObj.Builder lazyObjBuilder, MethodMetaObj.Builder methodMetaObjBuilder, FieldMetaObj.Builder fieldMetaObjBuilder) {
         super(solver);
-        this.LAZY_OBJ_UNKNOWN_TYPE = lazyObjUnknownType;
+        this.lazyObjBuilder = lazyObjBuilder;
+        this.methodMetaObjBuilder = methodMetaObjBuilder;
+        this.fieldMetaObjBuilder = fieldMetaObjBuilder;
     }
 
     private final MultiMap<Var, Type> castToTypes = Maps.newMultiMap();
 
     public void handleNewCast(Cast cast) {
         Type castType = cast.getRValue().getCastType();
-        if (Util.isConcerned(castType) && castType != LAZY_OBJ_UNKNOWN_TYPE) {
+        if (Util.isConcerned(castType) && !castType.equals(lazyObjBuilder.getUnknownType())) {
             Var source = cast.getRValue().getValue();
             castToTypes.put(source, castType);
         }
@@ -147,10 +151,11 @@ class CollectiveInferenceModel extends AbstractModel {
                             fieldType.equals(valueType1) || typeSystem.isSubtype(fieldType, valueType1)
                     );
             for (JClass possibleClass: possibleClasses) {
+                FieldMetaObj metaObj = fieldMetaObjBuilder.build(possibleClass, signature);
                 result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                        FieldMetaObj.DESC,
-                        FieldMetaObj.of(possibleClass, FieldMetaObj.SignatureRecord.of(signature.fieldName(), signature.fieldType())),
-                        FieldMetaObj.TYPE
+                        metaObj.getDesc(),
+                        metaObj,
+                        metaObj.getType()
                 )));
             }
         }
@@ -180,10 +185,12 @@ class CollectiveInferenceModel extends AbstractModel {
             }
 
             for (var possibleReturnType: allPossibleReturnTypes) {
+                FieldMetaObj fieldMetaObj = fieldMetaObjBuilder.build(baseClass,
+                        FieldMetaObj.SignatureRecord.of(null, possibleReturnType));
                 result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                        FieldMetaObj.DESC,
-                        FieldMetaObj.of(baseClass, FieldMetaObj.SignatureRecord.of(null, possibleReturnType)),
-                        FieldMetaObj.TYPE
+                        fieldMetaObj.getDesc(),
+                        fieldMetaObj,
+                        fieldMetaObj.getType()
                 )));
             }
         }
@@ -201,9 +208,8 @@ class CollectiveInferenceModel extends AbstractModel {
             if (!(recvType instanceof ClassType classType)) {
                 continue;
             }
-            FieldMetaObj fieldMetaObj = FieldMetaObj.of(classType.getJClass(), signature);
-            Obj newMethodObj = heapModel.getMockObj(FieldMetaObj.DESC, fieldMetaObj,
-                    FieldMetaObj.TYPE);
+            FieldMetaObj fieldMetaObj = fieldMetaObjBuilder.build(classType.getJClass(), signature);
+            Obj newMethodObj = heapModel.getMockObj(fieldMetaObj.getDesc(), fieldMetaObj, fieldMetaObj.getType());
 
             result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
         }
@@ -221,10 +227,11 @@ class CollectiveInferenceModel extends AbstractModel {
                         fieldType.equals(valueType) || typeSystem.isSubtype(fieldType, valueType) || typeSystem.isSubtype(valueType, fieldType)
                 );
         for (JClass possibleClass: possibleClasses) {
+            FieldMetaObj fieldMetaObj = fieldMetaObjBuilder.build(possibleClass, FieldMetaObj.SignatureRecord.of(signature.fieldName(), signature.fieldType()));
             result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                    FieldMetaObj.DESC,
-                    FieldMetaObj.of(possibleClass, FieldMetaObj.SignatureRecord.of(signature.fieldName(), signature.fieldType())),
-                    FieldMetaObj.TYPE
+                    fieldMetaObj.getDesc(),
+                    fieldMetaObj,
+                    fieldMetaObj.getType()
             )));
         }
         return result;
@@ -246,10 +253,12 @@ class CollectiveInferenceModel extends AbstractModel {
         }
 
         for (var possibleReturnType: allPossibleReturnTypes) {
+            FieldMetaObj fieldMetaObj = fieldMetaObjBuilder.build(baseClass,
+                    FieldMetaObj.SignatureRecord.of(null, possibleReturnType));
             result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                    FieldMetaObj.DESC,
-                    FieldMetaObj.of(baseClass, FieldMetaObj.SignatureRecord.of(null, possibleReturnType)),
-                    FieldMetaObj.TYPE
+                    fieldMetaObj.getDesc(),
+                    fieldMetaObj,
+                    fieldMetaObj.getType()
             )));
         }
 
@@ -266,9 +275,8 @@ class CollectiveInferenceModel extends AbstractModel {
             if (!(recvType instanceof ClassType classType)) {
                 continue;
             }
-            FieldMetaObj fieldMetaObj = FieldMetaObj.of(classType.getJClass(), signature);
-            Obj newMethodObj = heapModel.getMockObj(FieldMetaObj.DESC, fieldMetaObj,
-                    FieldMetaObj.TYPE);
+            FieldMetaObj fieldMetaObj = fieldMetaObjBuilder.build(classType.getJClass(), signature);
+            Obj newMethodObj = heapModel.getMockObj(fieldMetaObj.getDesc(), fieldMetaObj, fieldMetaObj.getType());
 
             result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
         }
@@ -286,13 +294,13 @@ class CollectiveInferenceModel extends AbstractModel {
         if (x == null) {
             possibleA = new HashSet<>(List.of(PrimitiveType.values()));
             possibleA.add(VoidType.VOID);
-            possibleA.add(LAZY_OBJ_UNKNOWN_TYPE);
+            possibleA.add(lazyObjBuilder.getUnknownType());
         } else {
              var tmp = castToTypes.get(x);
              if (tmp.isEmpty()) {
                  possibleA = new HashSet<>(List.of(PrimitiveType.values()));
                  possibleA.add(VoidType.VOID);
-                 possibleA.add(LAZY_OBJ_UNKNOWN_TYPE);
+                 possibleA.add(lazyObjBuilder.getUnknownType());
              } else {
                  possibleA = tmp;
              }
@@ -343,9 +351,9 @@ class CollectiveInferenceModel extends AbstractModel {
             if (!(recvType instanceof ClassType classType)) {
                 continue;
             }
-            MethodMetaObj methodMetaObj = MethodMetaObj.of(classType.getJClass(), signature);
-            Obj newMethodObj = heapModel.getMockObj(MethodMetaObj.DESC, methodMetaObj,
-                    MethodMetaObj.TYPE);
+            MethodMetaObj methodMetaObj = methodMetaObjBuilder.build(classType.getJClass(), signature);
+            Obj newMethodObj = heapModel.getMockObj(methodMetaObj.getDesc(), methodMetaObj,
+                    methodMetaObj.getType());
 
             result.addObject(solver.getCSManager().getCSObj(defaultHctx, newMethodObj));
         }
@@ -381,17 +389,19 @@ class CollectiveInferenceModel extends AbstractModel {
         var allPossibleArgTypes = findArgTypes(argObjs);
         for (var possibleReturnType: allPossibleReturnTypes) {
             if (allPossibleArgTypes == null) {
+                MethodMetaObj metaObj = methodMetaObjBuilder.build(baseClass, MethodMetaObj.SignatureRecord.of(null, null, possibleReturnType));
                 result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                        MethodMetaObj.DESC,
-                        MethodMetaObj.of(baseClass, MethodMetaObj.SignatureRecord.of(null, null, possibleReturnType)),
-                        MethodMetaObj.TYPE
+                        metaObj.getDesc(),
+                        metaObj,
+                        metaObj.getType()
                 )));
             } else {
                 for (var possibleArgTypes: allPossibleArgTypes) {
+                    MethodMetaObj metaObj = methodMetaObjBuilder.build(baseClass, MethodMetaObj.SignatureRecord.of(null, possibleArgTypes, possibleReturnType));
                     result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                            MethodMetaObj.DESC,
-                            MethodMetaObj.of(baseClass, MethodMetaObj.SignatureRecord.of(null, possibleArgTypes, possibleReturnType)),
-                            MethodMetaObj.TYPE
+                            metaObj.getDesc(),
+                            metaObj,
+                            metaObj.getType()
                     )));
                 }
             }
@@ -440,10 +450,11 @@ class CollectiveInferenceModel extends AbstractModel {
 
         for (var possibleSigAndClasses: possibleClasses) {
             for (var possibleClass: possibleSigAndClasses.second()) {
+                MethodMetaObj metaObj = methodMetaObjBuilder.build(possibleClass, possibleSigAndClasses.first());
                 result.addObject(solver.getCSManager().getCSObj(defaultHctx, heapModel.getMockObj(
-                        MethodMetaObj.DESC,
-                        MethodMetaObj.of(possibleClass, possibleSigAndClasses.first()),
-                        MethodMetaObj.TYPE
+                        metaObj.getDesc(),
+                        metaObj,
+                        metaObj.getType()
                 )));
             }
         }

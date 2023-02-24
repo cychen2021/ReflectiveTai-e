@@ -5,9 +5,7 @@ import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.Plugin;
 import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.stmt.Cast;
-import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
-import pascal.taie.language.type.Type;
 
 public class SolarAnalysis implements Plugin {
     private PropagationModel propagationModel;
@@ -15,15 +13,17 @@ public class SolarAnalysis implements Plugin {
     private CollectiveInferenceModel collectiveInferenceModel;
     private LazyHeapModel lazyHeapModel;
 
-    private Type LAZY_OBJ_UNKNOWN_TYPE;
-
     @Override
     public void setSolver(Solver solver) {
-        this.LAZY_OBJ_UNKNOWN_TYPE = solver.getHierarchy().getClass("java.lang.Object").getType();
-        this.propagationModel = new PropagationModel(solver);
+        LazyObj.Builder lazyObjBuilder = new LazyObj.Builder(solver.getTypeSystem());
+        MethodMetaObj.Builder methodMetaObjBuilder = new MethodMetaObj.Builder(solver.getTypeSystem());
+        FieldMetaObj.Builder fieldMetaObjBuilder = new FieldMetaObj.Builder(solver.getTypeSystem());
+        this.propagationModel = new PropagationModel(solver, new ClassMetaObj.Builder(solver.getTypeSystem()),
+                methodMetaObjBuilder, fieldMetaObjBuilder);
         this.transformationModel = new TransformationModel(solver);
-        this.collectiveInferenceModel = new CollectiveInferenceModel(solver, LAZY_OBJ_UNKNOWN_TYPE);
-        this.lazyHeapModel = new LazyHeapModel(solver, LAZY_OBJ_UNKNOWN_TYPE);
+        this.collectiveInferenceModel = new CollectiveInferenceModel(solver, lazyObjBuilder,
+                methodMetaObjBuilder, fieldMetaObjBuilder);
+        this.lazyHeapModel = new LazyHeapModel(solver, lazyObjBuilder);
     }
 
     @Override

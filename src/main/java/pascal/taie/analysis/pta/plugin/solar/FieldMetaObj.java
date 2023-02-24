@@ -8,6 +8,7 @@ import pascal.taie.language.classes.JField;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.Type;
+import pascal.taie.language.type.TypeSystem;
 
 import javax.annotation.Nullable;
 import java.util.HashSet;
@@ -74,18 +75,35 @@ class FieldMetaObj {
         return signature != null;
     }
 
-    private FieldMetaObj(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
+    private FieldMetaObj(@Nullable JClass baseClass, @Nullable SignatureRecord signature, Type type) {
         this.baseClass = baseClass;
         this.signature = signature;
+        this.type = type;
     }
 
-    public static FieldMetaObj of(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
-        return new FieldMetaObj(baseClass, signature);
+    static class Builder {
+        private final Type FIELD_META_OBJ_TYPE;
+        public Builder(TypeSystem typeSystem) {
+            this.FIELD_META_OBJ_TYPE = typeSystem.getType(FIELD);
+        }
+
+        public FieldMetaObj build(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
+            return new FieldMetaObj(baseClass, signature, FIELD_META_OBJ_TYPE);
+        }
     }
 
-    public static final ClassType TYPE = World.get().getTypeSystem().getClassType(FIELD);
+    private Type type;
 
-    public static final String DESC = "FieldMetaObj";
+    private static final String DESC = "FieldMetaObj";
+
+    public String getDesc() {
+        return DESC;
+    }
+
+    public Type getType() {
+        return type;
+    }
+
 
     public Set<FieldRef> search() {
         if (!baseClassIsKnown()) {
@@ -115,12 +133,12 @@ class FieldMetaObj {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FieldMetaObj that = (FieldMetaObj) o;
-        return Objects.equals(baseClass, that.baseClass) && Objects.equals(signature, that.signature);
+        return Objects.equals(type, that.type) && Objects.equals(baseClass, that.baseClass) && Objects.equals(signature, that.signature);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(baseClass, signature);
+        return Objects.hash(type, baseClass, signature);
     }
 
     @Override
