@@ -6,7 +6,7 @@ import pascal.taie.analysis.Tests;
 public class SolarTest {
     private static final String DIR = "solar";
 
-    private static final String[] OPTS = {"builtin-reflection-analysis:solar"};
+    private static final String[] OPTS = {"reflection:solar"};
 
     @Test
     public void testBasicEntry() {

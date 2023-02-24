@@ -122,20 +122,6 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
 
     private static void setPlugin(Solver solver, AnalysisOptions options) {
         CompositePlugin plugin = new CompositePlugin();
-        Plugin reflectionAnalysis;
-        if (!options.has("builtin-reflection-analysis")) {
-            reflectionAnalysis = new ReflectionAnalysis();
-        } else {
-            String reflectionAnalysisName = options.getString("builtin-reflection-analysis");
-            if (reflectionAnalysisName.equals("basic")) {
-                reflectionAnalysis = new ReflectionAnalysis();
-            } else if (reflectionAnalysisName.equals("solar")) {
-                reflectionAnalysis = new SolarAnalysis();
-            } else {
-                throw new IllegalArgumentException(
-                        "Illegal builtin reflection analysis name: " + reflectionAnalysisName);
-            }
-        }
         // add builtin plugins
         // To record elapsed time precisely, AnalysisTimer should be added at first.
         plugin.addPlugin(
@@ -153,7 +139,11 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
         if (World.get().getOptions().getJavaVersion() >= 8) {
             plugin.addPlugin(new LambdaAnalysis());
         }
-        if (options.getString("reflection") != null) {
+
+        String reflectionAnalysis = options.getString("reflection");
+        if (reflectionAnalysis != null && reflectionAnalysis.equals("solar")) {
+            plugin.addPlugin(new SolarAnalysis());
+        } else if (reflectionAnalysis != null) {
             plugin.addPlugin(new ReflectionAnalysis());
         }
         if (options.getBoolean("handle-invokedynamic") &&
