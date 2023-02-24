@@ -27,23 +27,12 @@ Points-to sets of all variables
 []:<FieldSig: void main(java.lang.String[])>/temp$0 -> [[]:MergedObj{<Merged java.lang.String>}]
 []:<X: void <init>()>/%this -> [[]:NewObj{<A: void <init>()>[1@L24] new Y}, []:NewObj{<FieldSig: void invoke(java.lang.String)>[22@L16] new Y}]
 []:<Y: void <init>()>/%this -> [[]:NewObj{<A: void <init>()>[1@L24] new Y}, []:NewObj{<FieldSig: void invoke(java.lang.String)>[22@L16] new Y}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/$r1 -> []
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r2 -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
-[]:<java.lang.ThreadGroup: void <init>()>/%stringconst1 -> []
-[]:<java.lang.ThreadGroup: void <init>()>/%this -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r1 -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
 
 Points-to sets of all static fields
 <FieldSig: java.lang.Class class$A> -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=A},type=java.lang.Class}]
 <java.lang.System: java.io.PrintStream out> -> []
 
 Points-to sets of all instance fields
-[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}.blockerLock -> []
-[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}.name -> []
 []:NewObj{<FieldSig: void invoke(java.lang.String)>[0@L9] new A}.field1 -> [[]:NewObj{<A: void <init>()>[1@L24] new Y}]
 
 Points-to sets of all array indexes

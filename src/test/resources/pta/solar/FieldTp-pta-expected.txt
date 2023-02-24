@@ -22,22 +22,11 @@ Points-to sets of all variables
 []:<FieldTp: void main(java.lang.String[])>/%stringconst0 -> [[]:ConstantObj{java.lang.String: "A"}]
 []:<FieldTp: void main(java.lang.String[])>/args -> [[]:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <FieldTp: void main(java.lang.String[])>}]
 []:<FieldTp: void main(java.lang.String[])>/temp$0 -> [[]:MergedObj{<Merged java.lang.String>}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/$r1 -> []
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r2 -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
-[]:<java.lang.ThreadGroup: void <init>()>/%stringconst1 -> []
-[]:<java.lang.ThreadGroup: void <init>()>/%this -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r1 -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
 
 Points-to sets of all static fields
 <java.lang.System: java.io.PrintStream out> -> []
 
 Points-to sets of all instance fields
-[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}.blockerLock -> []
-[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}.name -> []
 []:NewObj{<FieldTp: void invoke(java.lang.String)>[0@L9] new A}.field1 -> [[]:ConstantObj{java.lang.String: "Field1"}]
 []:NewObj{<FieldTp: void invoke(java.lang.String)>[0@L9] new A}.field2 -> [[]:ConstantObj{java.lang.String: "Field2"}]
 

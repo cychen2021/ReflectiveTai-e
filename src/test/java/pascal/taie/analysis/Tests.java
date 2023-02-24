@@ -47,7 +47,7 @@ public final class Tests {
     /**
      * Whether generate expected results or not.
      */
-    private static final boolean GENERATE_EXPECTED_RESULTS = false;
+    private static final boolean GENERATE_EXPECTED_RESULTS = true;
 
     /**
      * Whether dump control-flow graphs or not.

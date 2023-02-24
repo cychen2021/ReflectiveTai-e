@@ -55,15 +55,6 @@ Points-to sets of all variables
 []:<UnknownClassName: void main(java.lang.String[])>/temp$7 -> [[]:NewObj{<UnknownClassName: void main(java.lang.String[])>[21@L7] newarray java.lang.Class[%intconst1]}]
 []:<UnknownClassName: void main(java.lang.String[])>/temp$8 -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=java.lang.Object},type=java.lang.Class}, []:ClassMetaObj{alloc=ClassMetaObj{knownClass=java.lang.String},type=java.lang.Class}]
 []:<UnknownClassName: void main(java.lang.String[])>/temp$9 -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=java.lang.Object},type=java.lang.Class}, []:ClassMetaObj{alloc=ClassMetaObj{knownClass=java.lang.String},type=java.lang.Class}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/$r1 -> []
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r2 -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.Thread: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
-[]:<java.lang.ThreadGroup: void <init>()>/%stringconst1 -> []
-[]:<java.lang.ThreadGroup: void <init>()>/%this -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/%this -> [[]:EntryPointObj{alloc=<main-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r1 -> [[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}]
-[]:<java.lang.ThreadGroup: void <init>(java.lang.ThreadGroup,java.lang.String)>/r3 -> [[]:ConstantObj{java.lang.String: "main"}]
 
 Points-to sets of all static fields
 <UnknownClassName: java.lang.Class class$java$lang$Object> -> [[]:ClassMetaObj{alloc=ClassMetaObj{knownClass=java.lang.Object},type=java.lang.Class}, []:ClassMetaObj{alloc=ClassMetaObj{knownClass=java.lang.String},type=java.lang.Class}]
@@ -71,8 +62,6 @@ Points-to sets of all static fields
 <java.lang.System: java.io.PrintStream out> -> []
 
 Points-to sets of all instance fields
-[]:EntryPointObj{alloc=<main-thread>,type=java.lang.Thread}.blockerLock -> []
-[]:EntryPointObj{alloc=<system-thread-group>,type=java.lang.ThreadGroup}.name -> []
 
 Points-to sets of all array indexes
 []:EntryPointObj{alloc=<main-arguments>,type=java.lang.String[] in <UnknownClassName: void main(java.lang.String[])>}[*] -> [[]:EntryPointObj{alloc=<main-arguments-element>,type=java.lang.String in <UnknownClassName: void main(java.lang.String[])>}]
