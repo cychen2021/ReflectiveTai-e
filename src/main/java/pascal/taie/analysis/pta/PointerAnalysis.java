@@ -144,8 +144,7 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
                 new ClassInitializer(),
                 new ThreadHandler(),
                 new NativeModeller(),
-                new ExceptionAnalysis(),
-                reflectionAnalysis
+                new ExceptionAnalysis()
         );
         if (World.get().getOptions().getJavaVersion() < 9) {
             // current reference handler doesn't support Java 9+
@@ -153,6 +152,9 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
         }
         if (World.get().getOptions().getJavaVersion() >= 8) {
             plugin.addPlugin(new LambdaAnalysis());
+        }
+        if (options.getString("reflection") != null) {
+            plugin.addPlugin(new ReflectionAnalysis());
         }
         if (options.getBoolean("handle-invokedynamic") &&
                 InvokeDynamicAnalysis.useMethodHandle()) {
