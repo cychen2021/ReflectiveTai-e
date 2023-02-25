@@ -97,6 +97,14 @@ class TransformationModel extends AbstractModel {
             return new Edge<>(CallKind.VIRTUAL, callSite, callee);
         }
 
+        public CSCallSite getCallSite() {
+            return callSite;
+        }
+
+        public JMethod getCallee() {
+            return callee.getMethod();
+        }
+
         public List<PointerPassingEdge> pfgEdges() {
             Context calleeContext = callee.getContext();
             JMethod calleeMethod = callee.getMethod();
@@ -143,8 +151,11 @@ class TransformationModel extends AbstractModel {
         }
     }
 
-    protected TransformationModel(Solver solver) {
+    private QualityInterpreter qualityInterpreter;
+
+    protected TransformationModel(Solver solver, QualityInterpreter qualityInterpreter) {
         super(solver);
+        this.qualityInterpreter = qualityInterpreter;
     }
 
     @Override
@@ -169,6 +180,8 @@ class TransformationModel extends AbstractModel {
         var baseVar = invoke.getInvokeExp().getArg(0);
         var valueVar = invoke.getInvokeExp().getArg(1);
         var container = csManager.getCSMethod(context, invoke.getContainer());
+
+        CSCallSite csCallSite = csManager.getCSCallSite(context, invoke);
 
         fieldMetaObjs.forEach(csFieldObj -> {
             if (!(csFieldObj.getObject().getAllocation() instanceof FieldMetaObj fieldMetaObj)) {
@@ -198,6 +211,7 @@ class TransformationModel extends AbstractModel {
                     mockStore = new StoreField(new InstanceFieldAccess(fieldRef, baseVar), valueVar);
                 }
                 mockStmts.add(mockStore);
+                qualityInterpreter.addReflectiveObject(csCallSite, field);
             }
             solver.addStmts(container, mockStmts);
         });
@@ -210,6 +224,7 @@ class TransformationModel extends AbstractModel {
         var baseVar = invoke.getInvokeExp().getArg(0);
         var resultVar = invoke.getResult();
         var container = csManager.getCSMethod(context, invoke.getContainer());
+        CSCallSite csCallSite = csManager.getCSCallSite(context, invoke);
 
         fieldMetaObjs.forEach(csFieldObj -> {
             if (!(csFieldObj.getObject().getAllocation() instanceof FieldMetaObj fieldMetaObj)) {
@@ -239,6 +254,7 @@ class TransformationModel extends AbstractModel {
                     mockLoad = new LoadField(resultVar, new InstanceFieldAccess(fieldRef, baseVar));
                 }
                 mockStmts.add(mockLoad);
+                qualityInterpreter.addReflectiveObject(csCallSite, field);
             }
             solver.addStmts(container, mockStmts);
         });
@@ -266,6 +282,7 @@ class TransformationModel extends AbstractModel {
                 if (toRemove.isEmpty() || toRemove.peek() != i) {
                     toRemove.push(i);
                 }
+                qualityInterpreter.addReflectiveObject(edge.getCallSite(), edge.getCallee());
             }
         }
         while (!toRemove.isEmpty()) {

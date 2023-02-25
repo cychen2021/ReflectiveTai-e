@@ -1,7 +1,10 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
+import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
+import pascal.taie.analysis.pta.core.cs.element.CSManager;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.heap.Obj;
+import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.IntLiteral;
 import pascal.taie.ir.exp.NewArray;
 import pascal.taie.ir.stmt.New;
@@ -12,7 +15,9 @@ import pascal.taie.language.type.Type;
 import pascal.taie.language.type.TypeSystem;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 class Util {
      static int constArraySize(Obj obj) {
@@ -73,5 +78,40 @@ class Util {
      */
     public static boolean isConcerned(Type type) {
         return type instanceof ClassType || type instanceof ArrayType;
+    }
+
+    public static Set<List<Type>> possibleArgTypes(CSManager csManager, PointsToSet argObjects) {
+        Set<List<Type>> result = new HashSet<>();
+        for (CSObj argArray: argObjects) {
+            int arrLen = constArraySize(argArray.getObject());
+            if (arrLen == -1) {
+                return null;
+            }
+
+            ArrayIndex idx = csManager.getArrayIndex(argArray);
+            Set<Type> elementTypes = new HashSet<>();
+            idx.getObjects().forEach(obj -> {
+                Type t = obj.getObject().getType();
+                elementTypes.add(t);
+            });
+            var somePossibilities = cartesian(elementTypes, arrLen);
+            result.addAll(somePossibilities);
+        }
+        return result;
+    }
+
+    private static<T> List<List<T>> cartesian(Set<T> singleChoice, int repeatTimes) {
+        List<List<T>> result = new ArrayList<>();
+        if (repeatTimes == 0) {
+            result.add(new ArrayList<>());
+            return result;
+        }
+        for (T choice: singleChoice) {
+            for (List<T> subResult: cartesian(singleChoice, repeatTimes - 1)) {
+                subResult.add(choice);
+                result.add(subResult);
+            }
+        }
+        return result;
     }
 }

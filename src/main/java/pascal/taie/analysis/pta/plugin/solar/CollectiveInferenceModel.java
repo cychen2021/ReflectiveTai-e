@@ -5,7 +5,7 @@ import java.util.function.BiFunction;
 
 import com.sun.istack.NotNull;
 import pascal.taie.analysis.pta.core.cs.context.Context;
-import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
+import pascal.taie.analysis.pta.core.cs.element.CSCallSite;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.heap.Obj;
@@ -34,12 +34,17 @@ class CollectiveInferenceModel extends AbstractModel {
     private final LazyObj.Builder lazyObjBuilder;
     private final MethodMetaObj.Builder methodMetaObjBuilder;
     private final FieldMetaObj.Builder fieldMetaObjBuilder;
+    private final QualityInterpreter qualityInterpreter;
 
-    CollectiveInferenceModel(Solver solver, LazyObj.Builder lazyObjBuilder, MethodMetaObj.Builder methodMetaObjBuilder, FieldMetaObj.Builder fieldMetaObjBuilder) {
+    CollectiveInferenceModel(Solver solver, LazyObj.Builder lazyObjBuilder,
+                             MethodMetaObj.Builder methodMetaObjBuilder,
+                             FieldMetaObj.Builder fieldMetaObjBuilder,
+                             QualityInterpreter qualityInterpreter) {
         super(solver);
         this.lazyObjBuilder = lazyObjBuilder;
         this.methodMetaObjBuilder = methodMetaObjBuilder;
         this.fieldMetaObjBuilder = fieldMetaObjBuilder;
+        this.qualityInterpreter = qualityInterpreter;
     }
 
     private final MultiMap<Var, Type> castToTypes = Maps.newMultiMap();
@@ -80,6 +85,11 @@ class CollectiveInferenceModel extends AbstractModel {
         InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
         Var f = iExp.getBase();
         Context context = csVar.getContext();
+        CSCallSite callSite = csManager.getCSCallSite(context, invoke);
+        qualityInterpreter.addInferenceItem(callSite, new QualityInterpreter.FieldSetInferenceItem(
+                csManager.getCSVar(context, f), csManager.getCSVar(context, iExp.getArg(0)),
+                csManager.getCSVar(context, iExp.getArg(1))
+        ));
 
         boolean recvObjContainsUnknown = recvObjs.objects()
                 .anyMatch(Util::isLazyObjUnknownType);
@@ -112,6 +122,13 @@ class CollectiveInferenceModel extends AbstractModel {
         PointsToSet fldObjs = args.get(0); // m
         PointsToSet recvObjs = args.get(1); // y
         Context context = csVar.getContext();
+
+        CSCallSite callSite = csManager.getCSCallSite(context, invoke);
+        for (Type a: possibleA) {
+            qualityInterpreter.addInferenceItem(callSite,
+                    new QualityInterpreter.FieldGetInferenceItem(csManager.getCSVar(context, f),
+                            csManager.getCSVar(context, iExp.getArg(0)), a));
+        }
 
         boolean recvObjContainsUnknown = recvObjs.objects()
                 .anyMatch(Util::isLazyObjUnknownType);
@@ -290,6 +307,7 @@ class CollectiveInferenceModel extends AbstractModel {
         Var x = invoke.getLValue();
         InvokeInstanceExp iExp = (InvokeInstanceExp) invoke.getInvokeExp();
         Var m = iExp.getBase();
+
         Set<Type> possibleA;
         if (x == null) {
             possibleA = new HashSet<>(List.of(PrimitiveType.values()));
@@ -313,6 +331,12 @@ class CollectiveInferenceModel extends AbstractModel {
 
         boolean recvObjContainsUnknown = recvObjs.objects()
                 .anyMatch(Util::isLazyObjUnknownType);
+
+        CSCallSite callSite = csManager.getCSCallSite(context, invoke);
+        qualityInterpreter.addInferenceItem(callSite,
+                new QualityInterpreter.MethodInvokeInferenceItem(csManager.getCSVar(context, m),
+                        csManager.getCSVar(context, iExp.getArg(0)), csManager.getCSVar(context, iExp.getArg(1)))
+        );
 
         mtdObjs.forEach(mtdObj -> {
             if (!(mtdObj.getObject().getAllocation() instanceof MethodMetaObj methodMetaObj)) {
@@ -386,7 +410,7 @@ class CollectiveInferenceModel extends AbstractModel {
             allPossibleReturnTypes.addAll(hierarchy.getAllSubclassesOf(classType.getJClass()).stream().map(JClass::getType).toList());
         }
 
-        var allPossibleArgTypes = findArgTypes(argObjs);
+        var allPossibleArgTypes = possibleArgTypes(csManager, argObjs);
         for (var possibleReturnType: allPossibleReturnTypes) {
             if (allPossibleArgTypes == null) {
                 MethodMetaObj metaObj = methodMetaObjBuilder.build(baseClass, MethodMetaObj.SignatureRecord.of(null, null, possibleReturnType));
@@ -433,7 +457,7 @@ class CollectiveInferenceModel extends AbstractModel {
 
         assert signature.paramTypes() == null;
         List<MethodMetaObj.SignatureRecord> possibleSigs = new ArrayList<>();
-        var ptp = findArgTypes(argObjs);
+        var ptp = possibleArgTypes(csManager, argObjs);
         if (ptp != null) {
             for (var paramTypes: ptp) {
                 possibleSigs.add(MethodMetaObj.SignatureRecord.of(signature.methodName(), paramTypes, returnType));
@@ -456,41 +480,6 @@ class CollectiveInferenceModel extends AbstractModel {
                         metaObj,
                         metaObj.getType()
                 )));
-            }
-        }
-        return result;
-    }
-
-    private Set<List<Type>> findArgTypes(PointsToSet argObjects) {
-        Set<List<Type>> result = new HashSet<>();
-        for (CSObj argArray: argObjects) {
-            int arrLen = constArraySize(argArray.getObject());
-            if (arrLen == -1) {
-                return null;
-            }
-
-            ArrayIndex idx = csManager.getArrayIndex(argArray);
-            Set<Type> elementTypes = new HashSet<>();
-            idx.getObjects().forEach(obj -> {
-                Type t = obj.getObject().getType();
-                elementTypes.add(t);
-            });
-            var somePossibilities = cartesian(elementTypes, arrLen);
-            result.addAll(somePossibilities);
-        }
-        return result;
-    }
-
-    private static<T> List<List<T>> cartesian(Set<T> singleChoice, int repeatTimes) {
-        List<List<T>> result = new ArrayList<>();
-        if (repeatTimes == 0) {
-            result.add(new ArrayList<>());
-            return result;
-        }
-        for (T choice: singleChoice) {
-            for (List<T> subResult: cartesian(singleChoice, repeatTimes - 1)) {
-                subResult.add(choice);
-                result.add(subResult);
             }
         }
         return result;
