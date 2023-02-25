@@ -3,6 +3,7 @@ package pascal.taie.analysis.pta;
 import org.junit.Test;
 import pascal.taie.analysis.Tests;
 
+// TODO: Solve the random temporary variable index problem
 public class SolarTest {
     private static final String DIR = "solar";
 
@@ -13,11 +14,10 @@ public class SolarTest {
         Tests.testPTA(DIR, "Basic", OPTS);
     }
 
-//    TODO: Solve the random temporary number problem
-//    @Test
-//    public void testArgsRefineEntry() {
-//        Tests.testPTA(DIR, "ArgsRefine", OPTS);
-//    }
+    @Test
+    public void testArgsRefineEntry() {
+        Tests.testPTA(DIR, "ArgsRefine", OPTS);
+    }
 
     @Test
     public void testBasicFieldEntry() {
@@ -29,11 +29,10 @@ public class SolarTest {
         Tests.testPTA(DIR, "CastRecv", OPTS);
     }
 
-//    TODO: Solve the random temporary number problem
-//    @Test
-//    public void testDummyCastEntry() {
-//        Tests.testPTA(DIR, "DummyCast", OPTS);
-//    }
+    @Test
+    public void testDummyCastEntry() {
+        Tests.testPTA(DIR, "DummyCast", OPTS);
+    }
 
     @Test
     public void testDuplicateNameEntry() {
@@ -55,11 +54,11 @@ public class SolarTest {
         Tests.testPTA(DIR, "FieldTp", OPTS);
     }
 
-//    TODO: Solve OutOfMemoryError
-//    @Test
-//    public void testGetMethodsEntry() {
-//        Tests.testPTA(DIR, "GetMethods", OPTS);
-//    }
+   // TODO: Solve OutOfMemoryError
+    @Test
+    public void testGetMethodsEntry() {
+        Tests.testPTA(DIR, "GetMethods", OPTS);
+    }
 
     @Test
     public void testInheritanceEntry() {
@@ -76,11 +75,10 @@ public class SolarTest {
         Tests.testPTA(DIR, "LazyHeapField", OPTS);
     }
 
-//    TODO: Solve the random temporary number problem
-//    @Test
-//    public void testMethodInferenceEntry() {
-//        Tests.testPTA(DIR, "MethodInference", OPTS);
-//    }
+    @Test
+    public void testMethodInferenceEntry() {
+        Tests.testPTA(DIR, "MethodInference", OPTS);
+    }
 
     @Test
     public void testRecvTypeEntry() {
@@ -93,11 +91,11 @@ public class SolarTest {
     }
 
 
-//    TODO: Solve OutOfMemoryError
-//    @Test
-//    public void testUnknownMethodNameEntry() {
-//        Tests.testPTA(DIR, "UnknownMethodName", OPTS);
-//    }
+    // TODO: Solve OutOfMemoryError
+    @Test
+    public void testUnknownMethodNameEntry() {
+        Tests.testPTA(DIR, "UnknownMethodName", OPTS);
+    }
 
     @Test
     public void testUnknownRecvEntry() {

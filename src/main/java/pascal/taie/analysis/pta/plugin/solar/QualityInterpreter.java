@@ -11,6 +11,7 @@ import pascal.taie.util.collection.Maps;
 import pascal.taie.util.collection.MultiMap;
 
 import static pascal.taie.analysis.pta.plugin.solar.Util.*;
+import static pascal.taie.language.classes.ClassNames.OBJECT;
 
 import java.util.*;
 
@@ -136,15 +137,18 @@ public class QualityInterpreter {
 
     private final Type objectType;
 
-    public QualityInterpreter(Solver solver, int precisionThreshold, Type objectType) {
-        this.precisionThreshold = precisionThreshold;
+    public QualityInterpreter(Solver solver) {
         this.solver = solver;
-        this.objectType = objectType;
-    }
-
-    public QualityInterpreter(Solver solver, Type objectType) {
-        this.solver = solver;
-        this.objectType = objectType;
+        this.objectType = solver.getTypeSystem().getType(OBJECT);
+        if (solver.getOptions().has("solar-precision-threshold")) {
+            Object threshold = solver.getOptions().get("solar-precision-threshold");
+            if (threshold == null) {
+                return;
+            }
+            if ((int) threshold > 0) {
+                this.precisionThreshold = (int) threshold;
+            }
+        }
     }
 
     public void addReflectiveObject(CSCallSite callSite, Object object) {

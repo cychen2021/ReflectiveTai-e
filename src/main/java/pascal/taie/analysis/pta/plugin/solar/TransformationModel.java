@@ -5,7 +5,6 @@ import pascal.taie.analysis.graph.callgraph.Edge;
 import pascal.taie.analysis.pta.core.cs.context.Context;
 import pascal.taie.analysis.pta.core.cs.element.*;
 import pascal.taie.analysis.pta.core.solver.PointerFlowEdge;
-import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.InstanceFieldAccess;
@@ -154,11 +153,11 @@ class TransformationModel extends AbstractModel {
         }
     }
 
-    private QualityInterpreter qualityInterpreter;
+    private final SolarAnalysis solarAnalysis;
 
-    protected TransformationModel(Solver solver, QualityInterpreter qualityInterpreter) {
-        super(solver);
-        this.qualityInterpreter = qualityInterpreter;
+    public TransformationModel(SolarAnalysis solarAnalysis) {
+        super(solarAnalysis.getSolver());
+        this.solarAnalysis = solarAnalysis;
     }
 
     @Override
@@ -214,7 +213,7 @@ class TransformationModel extends AbstractModel {
                     mockStore = new StoreField(new InstanceFieldAccess(fieldRef, baseVar), valueVar);
                 }
                 mockStmts.add(mockStore);
-                qualityInterpreter.addReflectiveObject(csCallSite, field);
+                solarAnalysis.getQualityInterpreter().addReflectiveObject(csCallSite, field);
             }
             solver.addStmts(container, mockStmts);
         });
@@ -257,7 +256,7 @@ class TransformationModel extends AbstractModel {
                     mockLoad = new LoadField(resultVar, new InstanceFieldAccess(fieldRef, baseVar));
                 }
                 mockStmts.add(mockLoad);
-                qualityInterpreter.addReflectiveObject(csCallSite, field);
+                solarAnalysis.getQualityInterpreter().addReflectiveObject(csCallSite, field);
             }
             solver.addStmts(container, mockStmts);
         });
@@ -285,7 +284,7 @@ class TransformationModel extends AbstractModel {
                 if (toRemove.isEmpty() || toRemove.peek() != i) {
                     toRemove.push(i);
                 }
-                qualityInterpreter.addReflectiveObject(edge.getRealCallSite(), edge.getCallee());
+                solarAnalysis.getQualityInterpreter().addReflectiveObject(edge.getRealCallSite(), edge.getCallee());
             }
         }
         while (!toRemove.isEmpty()) {

@@ -5,7 +5,6 @@ import pascal.taie.analysis.pta.core.cs.element.ArrayIndex;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.heap.Obj;
-import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.plugin.util.CSObjs;
 import pascal.taie.analysis.pta.pts.PointsToSet;
@@ -17,16 +16,11 @@ import pascal.taie.language.classes.JMethod;
 import java.util.List;
 
 class PropagationModel extends AbstractModel {
-    private final ClassMetaObj.Builder classMetaObjBuilder;
-    private final MethodMetaObj.Builder methodMetaObjBuilder;
-    private final FieldMetaObj.Builder fieldMetaObjBuilder;
+    private final SolarAnalysis solarAnalysis;
 
-    PropagationModel(Solver solver, ClassMetaObj.Builder classMetaObjBuilder,
-                     MethodMetaObj.Builder methodMetaObjBuilder, FieldMetaObj.Builder fieldMetaObjBuilder) {
-        super(solver);
-        this.classMetaObjBuilder = classMetaObjBuilder;
-        this.methodMetaObjBuilder = methodMetaObjBuilder;
-        this.fieldMetaObjBuilder = fieldMetaObjBuilder;
+    PropagationModel(SolarAnalysis solarAnalysis) {
+        super(solarAnalysis.getSolver());
+        this.solarAnalysis = solarAnalysis;
     }
 
     @Override
@@ -67,7 +61,7 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                FieldMetaObj metaObj = fieldMetaObjBuilder.build(baseCls, fName == null ? null : FieldMetaObj.SignatureRecord.of(fName, null));
+                FieldMetaObj metaObj = solarAnalysis.getFieldMetaObjBuilder().build(baseCls, fName == null ? null : FieldMetaObj.SignatureRecord.of(fName, null));
                 Obj fldObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, fldObj);
                 Var result = invoke.getResult();
@@ -89,7 +83,7 @@ class PropagationModel extends AbstractModel {
             solver.initializeClass(klass);
             Var result = invoke.getResult();
             if (result != null) {
-                ClassMetaObj metaObj = classMetaObjBuilder.build(klass);
+                ClassMetaObj metaObj = solarAnalysis.getClassMetaObjBuilder().build(klass);
                 Obj clsObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
                 solver.addVarPointsTo(context, result, csObj);
@@ -111,7 +105,7 @@ class PropagationModel extends AbstractModel {
                     baseCls = clsMetaObj.getJClass();
                 }
 
-                MethodMetaObj metaObj = methodMetaObjBuilder.build(baseCls, mName == null ? null : MethodMetaObj.SignatureRecord.of(mName, null, null));
+                MethodMetaObj metaObj = solarAnalysis.getMethodMetaObjBuilder().build(baseCls, mName == null ? null : MethodMetaObj.SignatureRecord.of(mName, null, null));
 
                 Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
@@ -132,7 +126,7 @@ class PropagationModel extends AbstractModel {
                 baseCls = clsMetaObj.getJClass();
             }
 
-            MethodMetaObj metaObj = methodMetaObjBuilder.build(baseCls, null);
+            MethodMetaObj metaObj = solarAnalysis.getMethodMetaObjBuilder().build(baseCls, null);
 
             Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj,
                     typeSystem.getArrayType(metaObj.getType(), 1));

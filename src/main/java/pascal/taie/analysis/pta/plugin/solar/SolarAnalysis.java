@@ -18,23 +18,50 @@ public class SolarAnalysis implements Plugin {
     private QualityInterpreter qualityInterpreter;
     private String qualityLog = null;
 
+    private ClassMetaObj.Builder classMetaObjBuilder;
+    private MethodMetaObj.Builder methodMetaObjBuilder;
+    private FieldMetaObj.Builder fieldMetaObjBuilder;
+    private LazyObj.Builder lazyObjBuilder;
+
+    public QualityInterpreter getQualityInterpreter() {
+        return qualityInterpreter;
+    }
+
+    public ClassMetaObj.Builder getClassMetaObjBuilder() {
+        return classMetaObjBuilder;
+    }
+
+    public MethodMetaObj.Builder getMethodMetaObjBuilder() {
+        return methodMetaObjBuilder;
+    }
+
+    public FieldMetaObj.Builder getFieldMetaObjBuilder() {
+        return fieldMetaObjBuilder;
+    }
+
+    public LazyObj.Builder getLazyObjBuilder() {
+        return lazyObjBuilder;
+    }
+
+    private Solver solver;
+
+    public Solver getSolver() {
+        return solver;
+    }
+
     @Override
     public void setSolver(Solver solver) {
-        LazyObj.Builder lazyObjBuilder = new LazyObj.Builder(solver.getTypeSystem());
-        MethodMetaObj.Builder methodMetaObjBuilder = new MethodMetaObj.Builder(solver.getTypeSystem());
-        FieldMetaObj.Builder fieldMetaObjBuilder = new FieldMetaObj.Builder(solver.getTypeSystem());
-        if (solver.getOptions().has("solar-precision-threshold")) {
-            int precisionThreshold = solver.getOptions().getInt("solar-precision-threshold");
-            this.qualityInterpreter = new QualityInterpreter(solver, precisionThreshold, lazyObjBuilder.getUnknownType());
-        } else  {
-            this.qualityInterpreter = new QualityInterpreter(solver, lazyObjBuilder.getUnknownType());
-        }
-        this.propagationModel = new PropagationModel(solver, new ClassMetaObj.Builder(solver.getTypeSystem()),
-                methodMetaObjBuilder, fieldMetaObjBuilder);
-        this.transformationModel = new TransformationModel(solver, qualityInterpreter);
-        this.collectiveInferenceModel = new CollectiveInferenceModel(solver, lazyObjBuilder,
-                methodMetaObjBuilder, fieldMetaObjBuilder, qualityInterpreter);
-        this.lazyHeapModel = new LazyHeapModel(solver, lazyObjBuilder);
+        this.solver = solver;
+        this.classMetaObjBuilder = new ClassMetaObj.Builder(solver.getTypeSystem());
+        this.lazyObjBuilder = new LazyObj.Builder(solver.getTypeSystem());
+        this.methodMetaObjBuilder = new MethodMetaObj.Builder(solver.getTypeSystem());
+        this.fieldMetaObjBuilder = new FieldMetaObj.Builder(solver.getTypeSystem());
+        this.qualityInterpreter = new QualityInterpreter(solver);
+
+        this.propagationModel = new PropagationModel(this);
+        this.transformationModel = new TransformationModel(this);
+        this.collectiveInferenceModel = new CollectiveInferenceModel(this);
+        this.lazyHeapModel = new LazyHeapModel(this);
         if (solver.getOptions().has("solar-quality-log")) {
             this.qualityLog = solver.getOptions().getString("solar-quality-log");
         }

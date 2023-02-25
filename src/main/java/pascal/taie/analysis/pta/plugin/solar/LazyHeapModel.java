@@ -4,7 +4,6 @@ import pascal.taie.analysis.pta.core.cs.context.Context;
 import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.heap.Obj;
-import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.plugin.util.AbstractModel;
 import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.Var;
@@ -27,13 +26,11 @@ class LazyHeapModel extends AbstractModel {
     protected final Set<TriConsumer<CSVar, PointsToSet, Cast>> castHandlers
             = Sets.newHybridSet();
 
-    LazyHeapModel(Solver solver, LazyObj.Builder lazyObjBuilder) {
-        super(solver);
-        this.lazyObjBuilder = lazyObjBuilder;
-        registerCastHandlers();
+    private final SolarAnalysis solarAnalysis;
+    LazyHeapModel(SolarAnalysis solarAnalysis) {
+        super(solarAnalysis.getSolver());
+        this.solarAnalysis = solarAnalysis;
     }
-
-    private final LazyObj.Builder lazyObjBuilder;
 
     @Override
     protected void registerVarAndHandler() {
@@ -77,9 +74,9 @@ class LazyHeapModel extends AbstractModel {
                     var baseClass = metaObj.getBaseClass();
                     var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
                     possibleClasses.addAll(Util.superClassesOf(baseClass));
-                    possibleClasses.remove(((ClassType)lazyObjBuilder.getUnknownType()).getJClass());
+                    possibleClasses.remove(((ClassType)solarAnalysis.getLazyObjBuilder().getUnknownType()).getJClass());
                     for (var possibleClass: possibleClasses) {
-                        LazyObj lazyObj = lazyObjBuilder.known(possibleClass.getType());
+                        LazyObj lazyObj = solarAnalysis.getLazyObjBuilder().known(possibleClass.getType());
                         Obj obj = heapModel.getMockObj(lazyObj.getDesc(), lazyObj,
                                 lazyObj.getType());
                         CSObj csObj = csManager.getCSObj(context, obj);
@@ -110,9 +107,9 @@ class LazyHeapModel extends AbstractModel {
                     var baseClass = metaObj.getBaseClass();
                     var possibleClasses = hierarchy.getAllSubclassesOf(baseClass);
                     possibleClasses.addAll(Util.superClassesOf(baseClass));
-                    possibleClasses.remove(((ClassType) lazyObjBuilder.getUnknownType()).getJClass());
+                    possibleClasses.remove(((ClassType) solarAnalysis.getLazyObjBuilder().getUnknownType()).getJClass());
                     for (var possibleClass: possibleClasses) {
-                        LazyObj lazyObj = lazyObjBuilder.known(possibleClass.getType());
+                        LazyObj lazyObj = solarAnalysis.getLazyObjBuilder().known(possibleClass.getType());
                         Obj obj = heapModel.getMockObj(lazyObj.getDesc(), lazyObj,
                                 lazyObj.getType());
                         CSObj csObj = csManager.getCSObj(context, obj);
@@ -138,9 +135,9 @@ class LazyHeapModel extends AbstractModel {
             }
             LazyObj lazyObj;
             if (classMetaObj.isKnown()) {
-                lazyObj = lazyObjBuilder.known(classMetaObj.getJClass().getType());
+                lazyObj = solarAnalysis.getLazyObjBuilder().known(classMetaObj.getJClass().getType());
             } else {
-                lazyObj = lazyObjBuilder.unknown();
+                lazyObj = solarAnalysis.getLazyObjBuilder().unknown();
             }
             Obj obj = heapModel.getMockObj(lazyObj.getDesc(), lazyObj,
                     lazyObj.getType());
@@ -159,7 +156,7 @@ class LazyHeapModel extends AbstractModel {
         pts.forEach(srcObj -> {
             if (srcObj.getObject().getAllocation() instanceof LazyObj lazyObj) {
                 if (!lazyObj.isKnown()) {
-                    LazyObj newLazyObj = lazyObjBuilder.known(castType);
+                    LazyObj newLazyObj = solarAnalysis.getLazyObjBuilder().known(castType);
                     Obj obj = heapModel.getMockObj(newLazyObj.getDesc(), newLazyObj, newLazyObj.getType());
                     CSObj csObj = csManager.getCSObj(context, obj);
                     solver.addVarPointsTo(context, target, csObj);
@@ -171,7 +168,7 @@ class LazyHeapModel extends AbstractModel {
     public void handleNewCast(Cast cast) {
         CastExp exp = cast.getRValue();
         Type castType = exp.getCastType();
-        if (castType.equals(lazyObjBuilder.getUnknownType())) {
+        if (castType.equals(solarAnalysis.getLazyObjBuilder().getUnknownType())) {
             return;
         }
         Var source = exp.getValue();
