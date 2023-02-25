@@ -23,14 +23,21 @@ public class SolarAnalysis implements Plugin {
         LazyObj.Builder lazyObjBuilder = new LazyObj.Builder(solver.getTypeSystem());
         MethodMetaObj.Builder methodMetaObjBuilder = new MethodMetaObj.Builder(solver.getTypeSystem());
         FieldMetaObj.Builder fieldMetaObjBuilder = new FieldMetaObj.Builder(solver.getTypeSystem());
-        this.qualityInterpreter = new QualityInterpreter(solver, lazyObjBuilder.getUnknownType());
+        if (solver.getOptions().has("solar-precision-threshold")) {
+            int precisionThreshold = solver.getOptions().getInt("solar-precision-threshold");
+            this.qualityInterpreter = new QualityInterpreter(solver, precisionThreshold, lazyObjBuilder.getUnknownType());
+        } else  {
+            this.qualityInterpreter = new QualityInterpreter(solver, lazyObjBuilder.getUnknownType());
+        }
         this.propagationModel = new PropagationModel(solver, new ClassMetaObj.Builder(solver.getTypeSystem()),
                 methodMetaObjBuilder, fieldMetaObjBuilder);
         this.transformationModel = new TransformationModel(solver, qualityInterpreter);
         this.collectiveInferenceModel = new CollectiveInferenceModel(solver, lazyObjBuilder,
                 methodMetaObjBuilder, fieldMetaObjBuilder, qualityInterpreter);
         this.lazyHeapModel = new LazyHeapModel(solver, lazyObjBuilder);
-        this.qualityLog = solver.getOptions().getString("solar-quality-log");
+        if (solver.getOptions().has("solar-quality-log")) {
+            this.qualityLog = solver.getOptions().getString("solar-quality-log");
+        }
     }
 
     @Override
