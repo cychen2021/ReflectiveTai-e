@@ -4,6 +4,8 @@ import pascal.taie.analysis.pta.core.cs.element.CSCallSite;
 import pascal.taie.analysis.pta.core.cs.element.CSVar;
 import pascal.taie.analysis.pta.core.solver.Solver;
 import pascal.taie.analysis.pta.pts.PointsToSet;
+import pascal.taie.ir.exp.NullLiteral;
+import pascal.taie.ir.exp.Var;
 import pascal.taie.language.classes.JField;
 import pascal.taie.language.classes.JMethod;
 import pascal.taie.language.type.Type;
@@ -191,10 +193,12 @@ public class QualityInterpreter {
             var values = inferenceItems.get(key);
             for (InferenceItem item: values) {
                 if (item instanceof MethodInvokeInferenceItem mItem) {
-                    PointsToSet yPts = solver.getPointsToSetOf(mItem.getBaseVar());
-                    if (!allKnown(yPts)) {
-                        result.add(key);
-                        continue outer;
+                    if (!isNull(mItem.getBaseVar().getVar())) {
+                        PointsToSet yPts = solver.getPointsToSetOf(mItem.getBaseVar());
+                        if (!allKnown(yPts)) {
+                            result.add(key);
+                            continue outer;
+                        }
                     }
                     PointsToSet mPts = solver.getPointsToSetOf(mItem.getReflectiveVar());
                     for (var mObj: mPts) {
@@ -212,10 +216,12 @@ public class QualityInterpreter {
                         continue outer;
                     }
                 } else if (item instanceof FieldGetInferenceItem fGetItem) {
-                    PointsToSet yPts = solver.getPointsToSetOf(fGetItem.getBaseVar());
-                    if (!allKnown(yPts)) {
-                        result.add(key);
-                        continue outer;
+                    if (!isNull(fGetItem.getBaseVar().getVar())) {
+                        PointsToSet yPts = solver.getPointsToSetOf(fGetItem.getBaseVar());
+                        if (!allKnown(yPts)) {
+                            result.add(key);
+                            continue outer;
+                        }
                     }
                     PointsToSet fPts = solver.getPointsToSetOf(fGetItem.getReflectiveVar());
                     for (var fObj: fPts) {
@@ -232,10 +238,12 @@ public class QualityInterpreter {
                         continue outer;
                     }
                 } else if (item instanceof FieldSetInferenceItem fSetItem) {
-                    PointsToSet yPts = solver.getPointsToSetOf(fSetItem.getBaseVar());
-                    if (!allKnown(yPts)) {
-                        result.add(key);
-                        continue outer;
+                    if (!isNull(fSetItem.getBaseVar().getVar())) {
+                        PointsToSet yPts = solver.getPointsToSetOf(fSetItem.getBaseVar());
+                        if (!allKnown(yPts)) {
+                            result.add(key);
+                            continue outer;
+                        }
                     }
                     PointsToSet fPts = solver.getPointsToSetOf(fSetItem.getReflectiveVar());
                     for (var fObj: fPts) {
@@ -267,5 +275,9 @@ public class QualityInterpreter {
             }
         }
         return true;
+    }
+
+    private static boolean isNull(Var var) {
+        return var.isConst() && var.getConstValue().equals(NullLiteral.get());
     }
 }
