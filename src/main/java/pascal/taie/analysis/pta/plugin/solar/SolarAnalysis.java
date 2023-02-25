@@ -49,6 +49,12 @@ public class SolarAnalysis implements Plugin {
         return solver;
     }
 
+    private boolean useProbe = false;
+
+    public boolean useProbe() {
+        return useProbe;
+    }
+
     @Override
     public void setSolver(Solver solver) {
         this.solver = solver;
@@ -64,6 +70,10 @@ public class SolarAnalysis implements Plugin {
         this.lazyHeapModel = new LazyHeapModel(this);
         if (solver.getOptions().has("solar-quality-log")) {
             this.qualityLog = solver.getOptions().getString("solar-quality-log");
+        }
+
+        if (solver.getOptions().getString("reflection").equals("probe")) {
+            this.useProbe = true;
         }
     }
 

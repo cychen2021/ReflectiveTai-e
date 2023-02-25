@@ -93,7 +93,7 @@ class CollectiveInferenceModel extends AbstractModel {
             if (!fieldMetaObj.signatureIsKnown()) {
                 solver.addVarPointsTo(context, f, setSig(fieldMetaObj.getBaseClass(), valueObjs));
             }
-            if (!fieldMetaObj.baseClassIsKnown() && recvObjContainsUnknown
+            if (!solarAnalysis.useProbe() && !fieldMetaObj.baseClassIsKnown() && recvObjContainsUnknown
                     && fieldMetaObj.getFieldName() != null) {
                 solver.addVarPointsTo(context, f, setS2T(fieldMetaObj.getSignature(), valueObjs));
             }
@@ -133,7 +133,7 @@ class CollectiveInferenceModel extends AbstractModel {
                 if (!fieldMetaObj.signatureIsKnown()) {
                     solver.addVarPointsTo(context, f, getSig(fieldMetaObj.getBaseClass(), A));
                 }
-                if (!fieldMetaObj.baseClassIsKnown() && recvObjContainsUnknown
+                if (!solarAnalysis.useProbe() && !fieldMetaObj.baseClassIsKnown() && recvObjContainsUnknown
                         && fieldMetaObj.getFieldName() != null) {
                     solver.addVarPointsTo(context, f, getS2T(fieldMetaObj.getSignature(), A));
                 }
@@ -338,7 +338,7 @@ class CollectiveInferenceModel extends AbstractModel {
                 if (!methodMetaObj.signatureIsKnown()) {
                     solver.addVarPointsTo(context, m, invSig(methodMetaObj.getBaseClass(), argObjs, A));
                 }
-                if (!methodMetaObj.baseClassIsKnown() && recvObjContainsUnknown
+                if (!solarAnalysis.useProbe() && !methodMetaObj.baseClassIsKnown() && recvObjContainsUnknown
                         && methodMetaObj.getMethodName() != null) {
                     solver.addVarPointsTo(context, m, invS2T(methodMetaObj.getSignature(), argObjs, A));
                 }

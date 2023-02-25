@@ -55,6 +55,10 @@ class LazyHeapModel extends AbstractModel {
     }
 
     private void fieldAccess(CSVar csVar, PointsToSet pointsToSet, Invoke invoke) {
+        if (solarAnalysis.useProbe()) {
+            return;
+        }
+
         var args = getArgs(csVar, pointsToSet, invoke, BASE, 0);
         var baseObjs = args.get(0);
         var argObjs = args.get(1);
@@ -88,6 +92,10 @@ class LazyHeapModel extends AbstractModel {
     }
 
     private void methodInvoke(CSVar csVar, PointsToSet pointsToSet, Invoke invoke) {
+        if (solarAnalysis.useProbe()) {
+            return;
+        }
+
         var args = getArgs(csVar, pointsToSet, invoke, BASE, 0);
         var baseObjs = args.get(0);
         var argObjs = args.get(1);
@@ -147,6 +155,10 @@ class LazyHeapModel extends AbstractModel {
     }
 
     private void castHandler(CSVar csVar, PointsToSet pts, Cast cast) {
+        if (solarAnalysis.useProbe()) {
+            return;
+        }
+
         CastExp exp = cast.getRValue();
         assert csVar.getVar().equals(exp.getValue());
         Var target = cast.getLValue();

@@ -141,7 +141,7 @@ public class PointerAnalysis extends ProgramAnalysis<PointerAnalysisResult> {
         }
 
         String reflectionAnalysis = options.getString("reflection");
-        if (reflectionAnalysis != null && reflectionAnalysis.equals("solar")) {
+        if (reflectionAnalysis != null && (reflectionAnalysis.equals("solar") || reflectionAnalysis.equals("probe"))) {
             plugin.addPlugin(new SolarAnalysis());
         } else if (reflectionAnalysis != null) {
             plugin.addPlugin(new ReflectionAnalysis());
