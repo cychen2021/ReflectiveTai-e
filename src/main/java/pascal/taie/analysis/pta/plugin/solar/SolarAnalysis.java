@@ -22,6 +22,11 @@ public class SolarAnalysis implements Plugin {
     private MethodMetaObj.Builder methodMetaObjBuilder;
     private FieldMetaObj.Builder fieldMetaObjBuilder;
     private LazyObj.Builder lazyObjBuilder;
+    private AnnotationManager annotationManager;
+
+    public AnnotationManager getAnnotationManager() {
+        return annotationManager;
+    }
 
     public QualityInterpreter getQualityInterpreter() {
         return qualityInterpreter;
@@ -55,6 +60,8 @@ public class SolarAnalysis implements Plugin {
         return useProbe;
     }
 
+    private String annotationFile = null;
+
     @Override
     public void setSolver(Solver solver) {
         this.solver = solver;
@@ -74,6 +81,22 @@ public class SolarAnalysis implements Plugin {
 
         if (solver.getOptions().getString("reflection").equals("probe")) {
             this.useProbe = true;
+        }
+
+        this.annotationManager = new AnnotationManager(solver);
+        if (solver.getOptions().has("solar-annotation")) {
+            Object ann = solver.getOptions().get("solar-annotation");
+            if (ann != null) {
+                annotationFile = (String) ann;
+            }
+        }
+    }
+
+    @Override
+    public void onStart() {
+        Plugin.super.onStart();
+        if (annotationFile != null) {
+            annotationManager.load(annotationFile);
         }
     }
 
@@ -126,6 +149,7 @@ public class SolarAnalysis implements Plugin {
 
     @Override
     public void onNewMethod(JMethod method) {
+        propagationModel.onNewMethod(method);
         method.getIR().invokes(false).forEach(invoke -> {
             propagationModel.handleNewInvoke(invoke);
             collectiveInferenceModel.handleNewInvoke(invoke);

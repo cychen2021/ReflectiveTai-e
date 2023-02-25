@@ -28,10 +28,10 @@ class TransformationModel extends AbstractModel {
     private int freshVarCounter = 0;
     private final List<Pair<Set<CSVar>, ReflectionCallEdge>> pendingInvokes = new ArrayList<>();
 
-    private abstract class PointerPassingEdge {
-        private CSVar from;
-        private CSVar to;
-        private Type type;
+    private abstract static class PointerPassingEdge {
+        private final CSVar from;
+        private final CSVar to;
+        private final Type type;
 
         public PointerPassingEdge(CSVar from, CSVar to, Type type) {
             this.from = from;
@@ -54,7 +54,7 @@ class TransformationModel extends AbstractModel {
         }
     }
 
-    private class ArgPassingEdge extends PointerPassingEdge {
+    private static class ArgPassingEdge extends PointerPassingEdge {
         public ArgPassingEdge(CSVar from, CSVar to, Type type) {
             super(from, to, type);
         }
@@ -65,7 +65,7 @@ class TransformationModel extends AbstractModel {
         }
     }
 
-    private class ReturnEdge extends PointerPassingEdge {
+    private static class ReturnEdge extends PointerPassingEdge {
         public ReturnEdge(CSVar from, CSVar to, Type type) {
             super(from, to, type);
         }
@@ -126,11 +126,11 @@ class TransformationModel extends AbstractModel {
 
             for (int i = 0; i < args.size(); i++) {
                 result.add(
-                    new ArgPassingEdge(
-                        args.get(i),
-                        csManager.getCSVar(calleeContext, argVars.get(i)),
-                        argVars.get(i).getType()
-                    )
+                        new ArgPassingEdge(
+                                args.get(i),
+                                csManager.getCSVar(calleeContext, argVars.get(i)),
+                                argVars.get(i).getType()
+                        )
                 );
             }
 
@@ -275,6 +275,9 @@ class TransformationModel extends AbstractModel {
                     }
                 }
                 var edge = pair.second();
+                if (edge.getCallee().getDeclaringClass().toString().equals("D")) {
+                    System.out.println("HIT");
+                }
                 solver.addCallEdge(edge.callEdge());
 
                 var pfgEdges = edge.pfgEdges();

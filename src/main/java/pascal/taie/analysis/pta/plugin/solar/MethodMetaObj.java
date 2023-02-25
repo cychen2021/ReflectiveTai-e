@@ -1,5 +1,6 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
+import com.sun.istack.NotNull;
 import pascal.taie.World;
 import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.language.classes.JClass;
@@ -16,6 +17,10 @@ import static pascal.taie.analysis.pta.plugin.solar.Util.*;
 import java.util.*;
 
 class MethodMetaObj {
+    public boolean isManuallyResolved() {
+        return jMethod != null;
+    }
+
     record SignatureRecord(String methodName, List<Type> paramTypes, Type returnType) {
         @Override
         public boolean equals(Object o) {
@@ -36,6 +41,7 @@ class MethodMetaObj {
     }
 
     private final JClass baseClass;
+    private final JMethod jMethod;
 
     public JClass getBaseClass() {
         return baseClass;
@@ -80,6 +86,14 @@ class MethodMetaObj {
         this.baseClass = baseClass;
         this.signature = signature;
         this.type = type;
+        this.jMethod = null;
+    }
+
+    private MethodMetaObj(@NotNull JMethod jMethod, Type type) {
+        this.baseClass = jMethod.getDeclaringClass();
+        this.signature = SignatureRecord.of(jMethod.getName(), jMethod.getParamTypes(), jMethod.getReturnType());
+        this.type = type;
+        this.jMethod = jMethod;
     }
 
     static class Builder {
@@ -91,6 +105,9 @@ class MethodMetaObj {
 
         public MethodMetaObj build(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
             return new MethodMetaObj(baseClass, signature, META_OBJ_TYPE);
+        }
+        public MethodMetaObj build(@NotNull JMethod jMethod) {
+            return new MethodMetaObj(jMethod, META_OBJ_TYPE);
         }
     }
 
@@ -107,6 +124,10 @@ class MethodMetaObj {
     }
 
     public Set<MethodRef> search() {
+        if (isManuallyResolved()) {
+            return Set.of(jMethod.getRef());
+        }
+
         if (!baseClassIsKnown()) {
             throw new IllegalStateException("Cannot search for a method without a known base class.");
         }

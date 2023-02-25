@@ -1,26 +1,26 @@
 package pascal.taie.analysis.pta.plugin.solar;
 
-import pascal.taie.World;
+import com.sun.istack.NotNull;
 import pascal.taie.ir.proginfo.FieldRef;
-import pascal.taie.ir.proginfo.MethodRef;
 import pascal.taie.language.classes.JClass;
 import pascal.taie.language.classes.JField;
-import pascal.taie.language.classes.JMethod;
-import pascal.taie.language.type.ClassType;
 import pascal.taie.language.type.Type;
 import pascal.taie.language.type.TypeSystem;
 
 import javax.annotation.Nullable;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static pascal.taie.analysis.pta.plugin.solar.Util.paramTypesFit;
 import static pascal.taie.language.classes.ClassNames.FIELD;
-import static pascal.taie.language.classes.ClassNames.METHOD;
 
 class FieldMetaObj {
+    private final JField jField;
+
+    public boolean isManuallyResolved() {
+        return jField != null;
+    }
+
     record SignatureRecord(String fieldName, Type fieldType) {
         @Override
         public boolean equals(Object o) {
@@ -79,6 +79,14 @@ class FieldMetaObj {
         this.baseClass = baseClass;
         this.signature = signature;
         this.type = type;
+        this.jField = null;
+    }
+
+    private FieldMetaObj(@NotNull JField jField, Type type) {
+        this.baseClass = jField.getDeclaringClass();
+        this.signature = SignatureRecord.of(jField.getName(), jField.getType());
+        this.type = type;
+        this.jField = jField;
     }
 
     static class Builder {
@@ -90,9 +98,13 @@ class FieldMetaObj {
         public FieldMetaObj build(@Nullable JClass baseClass, @Nullable SignatureRecord signature) {
             return new FieldMetaObj(baseClass, signature, FIELD_META_OBJ_TYPE);
         }
+
+        public FieldMetaObj build(JField field) {
+            return new FieldMetaObj(field, FIELD_META_OBJ_TYPE);
+        }
     }
 
-    private Type type;
+    private final Type type;
 
     private static final String DESC = "FieldMetaObj";
 
@@ -106,6 +118,10 @@ class FieldMetaObj {
 
 
     public Set<FieldRef> search() {
+        if (isManuallyResolved()) {
+            return Set.of(jField.getRef());
+        }
+
         if (!baseClassIsKnown()) {
             throw new IllegalStateException("Cannot search for a method without a known base class.");
         }

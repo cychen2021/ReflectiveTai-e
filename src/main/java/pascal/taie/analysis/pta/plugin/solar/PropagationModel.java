@@ -11,16 +11,60 @@ import pascal.taie.analysis.pta.pts.PointsToSet;
 import pascal.taie.ir.exp.Var;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JClass;
+import pascal.taie.language.classes.JField;
 import pascal.taie.language.classes.JMethod;
+import pascal.taie.util.collection.Pair;
 
-import java.util.List;
+import java.util.*;
 
 class PropagationModel extends AbstractModel {
     private final SolarAnalysis solarAnalysis;
+    private final Map<Invoke, Pair<JMethod, Integer>> classIntrospectIndices = new HashMap<>();
+    private final Map<Invoke, Pair<JMethod, Integer>> fieldIntrospectIndices = new HashMap<>();
+    private final Map<Invoke, Pair<JMethod, Integer>> methodIntrospectIndices = new HashMap<>();
+
+    private final Set<JMethod> classIntrospectMethods = new HashSet<>();
+    private final Set<JMethod> fieldIntrospectMethods = new HashSet<>();
+    private final Set<JMethod> methodIntrospectMethods = new HashSet<>();
 
     PropagationModel(SolarAnalysis solarAnalysis) {
         super(solarAnalysis.getSolver());
         this.solarAnalysis = solarAnalysis;
+
+        JMethod classForName = hierarchy.getJREMethod("<java.lang.Class: java.lang.Class forName(java.lang.String)>");
+        classIntrospectMethods.add(classForName);
+        JMethod classForName2 = hierarchy.getJREMethod("<java.lang.Class: java.lang.Class forName(java.lang.String,boolean,java.lang.ClassLoader)>");
+        classIntrospectMethods.add(classForName2);
+
+        JMethod classGetMethod = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])>");
+        methodIntrospectMethods.add(classGetMethod);
+
+        JMethod classGetMethods = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Method[] getMethods()>");
+        methodIntrospectMethods.add(classGetMethods);
+
+        JMethod classGetField = hierarchy.getJREMethod("<java.lang.Class: java.lang.reflect.Field getField(java.lang.String)>");
+        fieldIntrospectMethods.add(classGetField);
+    }
+
+    public void onNewMethod(JMethod method) {
+        int classCounter = 0;
+        int fieldCounter = 0;
+        int methodCounter = 0;
+        for (Invoke invoke: method.getIR().invokes(false).toList()) {
+            JMethod callee = invoke.getInvokeExp().getMethodRef().resolveNullable();
+            if (callee != null) {
+                if (classIntrospectMethods.contains(callee)) {
+                    classIntrospectIndices.put(invoke, new Pair<>(method, classCounter));
+                    classCounter++;
+                } else if (fieldIntrospectMethods.contains(callee)) {
+                    fieldIntrospectIndices.put(invoke, new Pair<>(method, fieldCounter));
+                    fieldCounter++;
+                } else if (methodIntrospectMethods.contains(callee)) {
+                    methodIntrospectIndices.put(invoke, new Pair<>(method, methodCounter));
+                    methodCounter++;
+                }
+            }
+        };
     }
 
     @Override
@@ -49,6 +93,22 @@ class PropagationModel extends AbstractModel {
 
     private void classGetField(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
+        Var result = invoke.getResult();
+
+        var idx = fieldIntrospectIndices.get(invoke);
+        if (solarAnalysis.getAnnotationManager().has(ReflectiveAnnotation.Kind.Field, idx.first(), idx.second())) {
+            ReflectiveAnnotation annotation =
+                    solarAnalysis.getAnnotationManager().getAnnotation(ReflectiveAnnotation.Kind.Field, idx.first(), idx.second());
+            Collection<JField> fields = annotation.getFields();
+            for (JField jField: fields) {
+                FieldMetaObj metaObj = solarAnalysis.getFieldMetaObjBuilder().build(jField);
+                Obj clsObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
+                CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
+                solver.addVarPointsTo(context, result, csObj);
+            }
+            return;
+        }
+
         List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0);
         PointsToSet baseClsObjs = args.get(0);
         PointsToSet fNameObjs = args.get(1);
@@ -64,7 +124,6 @@ class PropagationModel extends AbstractModel {
                 FieldMetaObj metaObj = solarAnalysis.getFieldMetaObjBuilder().build(baseCls, fName == null ? null : FieldMetaObj.SignatureRecord.of(fName, null));
                 Obj fldObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, fldObj);
-                Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);
             });
         });
@@ -72,6 +131,21 @@ class PropagationModel extends AbstractModel {
 
     private void classForName(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
+        Var result = invoke.getResult();
+        var idx = classIntrospectIndices.get(invoke);
+        if (solarAnalysis.getAnnotationManager().has(ReflectiveAnnotation.Kind.Class, idx.first(), idx.second())) {
+            ReflectiveAnnotation annotation =
+                    solarAnalysis.getAnnotationManager().getAnnotation(ReflectiveAnnotation.Kind.Class, idx.first(), idx.second());
+            Collection<JClass> classes = annotation.getClasses();
+            for (JClass jClass: classes) {
+                ClassMetaObj metaObj = solarAnalysis.getClassMetaObjBuilder().build(jClass);
+                Obj clsObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
+                CSObj csObj = csManager.getCSObj(defaultHctx, clsObj);
+                solver.addVarPointsTo(context, result, csObj);
+            }
+            return;
+        }
+
         pts.forEach(obj -> {
             String className = CSObjs.toString(obj);
             JClass klass;
@@ -81,7 +155,6 @@ class PropagationModel extends AbstractModel {
                 klass = hierarchy.getClass(className);
             }
             solver.initializeClass(klass);
-            Var result = invoke.getResult();
             if (result != null) {
                 ClassMetaObj metaObj = solarAnalysis.getClassMetaObjBuilder().build(klass);
                 Obj clsObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
@@ -93,6 +166,22 @@ class PropagationModel extends AbstractModel {
 
     private void classGetMethod(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
+        Var result = invoke.getResult();
+
+        var idx = methodIntrospectIndices.get(invoke);
+        if (solarAnalysis.getAnnotationManager().has(ReflectiveAnnotation.Kind.Method, idx.first(), idx.second())) {
+            ReflectiveAnnotation annotation =
+                    solarAnalysis.getAnnotationManager().getAnnotation(ReflectiveAnnotation.Kind.Method, idx.first(), idx.second());
+            Collection<JMethod> methods = annotation.getMethods();
+            for (JMethod jMethod: methods) {
+                MethodMetaObj metaObj = solarAnalysis.getMethodMetaObjBuilder().build(jMethod);
+                Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
+                CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
+                solver.addVarPointsTo(context, result, csObj);
+            }
+            return;
+        }
+
         List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE, 0);
         PointsToSet baseClsObjs = args.get(0);
         PointsToSet mNameObjs = args.get(1);
@@ -109,7 +198,6 @@ class PropagationModel extends AbstractModel {
 
                 Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj, metaObj.getType());
                 CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
-                Var result = invoke.getResult();
                 solver.addVarPointsTo(context, result, csObj);
             });
         });
@@ -117,6 +205,25 @@ class PropagationModel extends AbstractModel {
 
     private void classGetMethods(CSVar csVar, PointsToSet pts, Invoke invoke) {
         Context context = csVar.getContext();
+        Var result = invoke.getResult();
+
+        var idx = methodIntrospectIndices.get(invoke);
+        if (solarAnalysis.getAnnotationManager().has(ReflectiveAnnotation.Kind.Method, idx.first(), idx.second())) {
+            ReflectiveAnnotation annotation =
+                    solarAnalysis.getAnnotationManager().getAnnotation(ReflectiveAnnotation.Kind.Method, idx.first(), idx.second());
+            Collection<JMethod> methods = annotation.getMethods();
+            for (JMethod jMethod: methods) {
+                MethodMetaObj metaObj = solarAnalysis.getMethodMetaObjBuilder().build(jMethod);
+                Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj,
+                        typeSystem.getArrayType(metaObj.getType(), 1));
+                CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
+                ArrayIndex arrIdx = csManager.getArrayIndex(csObj);
+                solver.addVarPointsTo(context, result, csObj);
+                solver.addPointsTo(arrIdx, csObj);
+            }
+            return;
+        }
+
         List<PointsToSet> args = getArgs(csVar, pts, invoke, BASE);
         PointsToSet baseClsObjs = args.get(0);
         baseClsObjs.forEach(baseClsObj -> {
@@ -131,10 +238,9 @@ class PropagationModel extends AbstractModel {
             Obj mtdObj = heapModel.getMockObj(metaObj.getDesc(), metaObj,
                     typeSystem.getArrayType(metaObj.getType(), 1));
             CSObj csObj = csManager.getCSObj(defaultHctx, mtdObj);
-            ArrayIndex idx = csManager.getArrayIndex(csObj);
-            Var result = invoke.getResult();
+            ArrayIndex arrIdx = csManager.getArrayIndex(csObj);
             solver.addVarPointsTo(context, result, csObj);
-            solver.addPointsTo(idx, csObj);
+            solver.addPointsTo(arrIdx, csObj);
         });
     }
 }
