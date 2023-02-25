@@ -84,21 +84,24 @@ class TransformationModel extends AbstractModel {
         private final List<CSVar> args;
 
         private final CSVar resultReceiver;
+        private final CSCallSite realCallSite;
 
-        public ReflectionCallEdge(CSCallSite callSite, CSMethod callee, CSVar thisArg, List<CSVar> args, CSVar resultReceiver) {
-            this.callSite = callSite;
+        public ReflectionCallEdge(CSCallSite mockCallSite, CSMethod callee, CSVar thisArg,
+                                  List<CSVar> args, CSVar resultReceiver, CSCallSite realCallSite) {
+            this.callSite = mockCallSite;
             this.callee = callee;
             this.thisArg = thisArg;
             this.args = args;
             this.resultReceiver = resultReceiver;
+            this.realCallSite = realCallSite;
         }
 
         public Edge<CSCallSite, CSMethod> callEdge() {
             return new Edge<>(CallKind.VIRTUAL, callSite, callee);
         }
 
-        public CSCallSite getCallSite() {
-            return callSite;
+        public CSCallSite getRealCallSite() {
+            return realCallSite;
         }
 
         public JMethod getCallee() {
@@ -282,7 +285,7 @@ class TransformationModel extends AbstractModel {
                 if (toRemove.isEmpty() || toRemove.peek() != i) {
                     toRemove.push(i);
                 }
-                qualityInterpreter.addReflectiveObject(edge.getCallSite(), edge.getCallee());
+                qualityInterpreter.addReflectiveObject(edge.getRealCallSite(), edge.getCallee());
             }
         }
         while (!toRemove.isEmpty()) {
@@ -298,6 +301,8 @@ class TransformationModel extends AbstractModel {
         PointsToSet argArrayObjs = args.get(2);
         var receiveVar = invoke.getInvokeExp().getArg(0);
         Var resultVar = invoke.getResult();
+
+        CSCallSite realCallSite = csManager.getCSCallSite(context, invoke);
 
         mtdMetaObjs.forEach(mtd -> {
             if (!(mtd.getObject().getAllocation() instanceof MethodMetaObj mtdMetaObj)) {
@@ -378,7 +383,8 @@ class TransformationModel extends AbstractModel {
                                 csCallee,
                                 csManager.getCSVar(context, receiveVar),
                                 csFreshArgs,
-                                resultVar != null ? csManager.getCSVar(context, resultVar) : null
+                                resultVar != null ? csManager.getCSVar(context, resultVar) : null,
+                                realCallSite
                         )
                 ));
             }

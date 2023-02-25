@@ -17,7 +17,7 @@ import java.util.*;
 public class QualityInterpreter {
     // TODO: Use different thresholds for different reflective methods?
     private int precisionThreshold = -1;
-    private Solver solver;
+    private final Solver solver;
     private final MultiMap<CSCallSite, JField> fieldReflectiveObjects = Maps.newMultiMap();
     private final MultiMap<CSCallSite, JMethod> methodReflectiveObjects = Maps.newMultiMap();
     private final MultiMap<CSCallSite, InferenceItem> inferenceItems = Maps.newMultiMap();

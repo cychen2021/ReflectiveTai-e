@@ -18,6 +18,8 @@
     action-file: null # path of file to dump/compare
     reflection: string-constant # | null | log
     reflection-log: null # path to reflection log, required when reflection option is log
+    solar-quality-log: null
+    solar-precision-threshold: null
     taint-config: null # path to config file of taint analysis,
     # when this file is given, taint analysis will be enabled
     plugins: [ ] # | [ pluginClass, ... ]

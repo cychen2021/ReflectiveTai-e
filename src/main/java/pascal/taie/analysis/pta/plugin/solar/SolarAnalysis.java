@@ -53,14 +53,14 @@ public class SolarAnalysis implements Plugin {
 
         stringBuilder.append("Imprecise List:\n");
         for (CSCallSite callSite: imprecise) {
-            stringBuilder.append(callSite.toString());
+            stringBuilder.append(callSite.toString()).append("\n");
         }
 
         stringBuilder.append("\n");
 
         stringBuilder.append("Unsound List:\n");
         for (CSCallSite callSite: unsound) {
-            stringBuilder.append(callSite.toString());
+            stringBuilder.append(callSite.toString()).append("\n");
         }
 
         try (FileWriter qualityFile = new FileWriter(qualityLog)) {
